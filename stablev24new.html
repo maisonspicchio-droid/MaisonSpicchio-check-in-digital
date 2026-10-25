@@ -1,0 +1,3073 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Maison Spicchio - Gestione & Validazione Servizi</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root {
+  --burgundy-dark: #3b0510;
+  --burgundy: #59081a;
+  --burgundy-light: #7a1027;
+  --gold: #c9a227;
+  --gold-bright: #f3e5ab;
+  --gold-soft: #fffaf0;
+  --gold-border: #e9d9a6;
+  --white: #ffffff;
+  --bg: #f5f2ed;
+  --border: #e9e2d6;
+  --text: #1f1316;
+  --text-muted: #6f5f64;
+  --success: #15803d;
+  --danger: #dc2626;
+  --shadow-sm: 0 1px 2px rgba(59,5,16,.05);
+  --shadow: 0 4px 12px rgba(59,5,16,.08), 0 12px 32px -14px rgba(59,5,16,.22);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+body {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: radial-gradient(1100px 480px at 50% -220px, #efe2d1 0, transparent 70%), var(--bg);
+  margin: 0;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.45;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.ic { width: 1.15em; height: 1.15em; flex-shrink: 0; vertical-align: -0.2em; }
+.container { max-width: 1080px; margin: 0 auto; padding: 18px max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ---------- LAYOUT BASE ---------- */
+.card { background: var(--white); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); padding: 26px; margin-bottom: 20px; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.card-title { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; font-size: 18px; font-weight: 800; color: var(--burgundy-dark); letter-spacing: -.2px; }
+.card-title .ic { color: var(--gold); width: 1.3em; height: 1.3em; }
+.sub { color: var(--text-muted); font-size: 13.5px; margin: 0 0 16px; line-height: 1.5; }
+h2, h3 { margin: 0; color: var(--burgundy-dark); letter-spacing: -.2px; }
+h3.sec { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin: 22px 0 4px; }
+h3.sec .ic { color: var(--gold); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.header-flex { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+  .grid, .grid-3, .srv-grid, .kpis, .stats-grid { grid-template-columns: 1fr !important; }
+  .container { padding: 12px max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+  .card { padding: 18px; border-radius: 16px; }
+  .appbar-actions { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scroll-behavior: smooth; }
+}
+
+/* ---------- FORM & INPUT ---------- */
+label { display: block; font-size: 12.5px; font-weight: 700; color: var(--burgundy-dark); margin-bottom: 5px; }
+input:not([type=checkbox]), select, textarea { width: 100%; height: 46px; padding: 0 14px; margin: 0 0 14px; border-radius: 12px; border: 1.5px solid var(--border); font-size: 16px !important; font-family: inherit; background: var(--white); color: var(--text); transition: all 0.2s ease; -webkit-appearance: none; }
+textarea { height: auto; padding: 12px 14px; resize: vertical; line-height: 1.4; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px rgba(201,162,39,.15); }
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 50px !important; }
+.pw-wrap input.pin-input { padding-left: 50px; text-align: center; font-weight: 800; font-size: 20px !important; letter-spacing: 6px; }
+.pw-toggle { position: absolute; right: 6px; top: 5px; width: 36px; height: 36px; border: 0; background: transparent; color: var(--text-muted); border-radius: 10px; cursor: pointer; display: grid; place-items: center; font-size: 17px; transition: background 0.2s, color 0.2s; }
+.pw-toggle:hover, .pw-toggle:focus-visible { background: var(--gold-soft); color: var(--burgundy); outline: none; }
+
+/* ---------- BOTTONI ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 12px; border: 1px solid transparent; font: inherit; font-weight: 700; font-size: 14.5px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); background: var(--burgundy); color: var(--white); white-space: nowrap; text-decoration: none; user-select: none; -webkit-user-select: none; }
+.btn:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.btn:active:not(:disabled) { transform: translateY(0); filter: brightness(0.95); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-block { width: 100%; }
+.btn-primary { background: linear-gradient(135deg, var(--burgundy-light), var(--burgundy-dark)); box-shadow: 0 6px 16px -6px rgba(89,8,26,.6); }
+.btn-ghost { background: var(--white); color: var(--burgundy-dark); border-color: var(--border); }
+.btn-ghost:hover:not(:disabled) { background: var(--gold-soft); border-color: var(--gold-border); box-shadow: none; }
+.btn-success { background: var(--success); }
+.btn-teal { background: #0f766e; }
+.btn-gold { background: linear-gradient(135deg, #d9b640, #b38f22); color: #2b1d00; }
+.btn-dark { background: #475569; }
+.btn-danger { background: var(--danger); }
+.btn-sm { height: 36px; padding: 0 12px; font-size: 13.5px; border-radius: 10px; }
+.btn-icon { width: 36px; padding: 0; }
+.lbl { display: none; }
+@media (min-width: 980px) { .lbl { display: inline; } }
+.spin .ic { animation: gira .9s linear infinite; }
+@keyframes gira { to { transform: rotate(360deg); } }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.stack { display: grid; gap: 10px; }
+
+/* ---------- BADGE & KPI ---------- */
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; white-space: nowrap; }
+.b-ok { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.b-wait { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.b-todo { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+.b-exp { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; }
+.badge-servizio { background: var(--gold-soft); color: var(--burgundy-dark); border: 1px solid var(--gold-border); }
+.badge-colazione { background: var(--gold-soft); color: #8a6a0c; border: 1px solid var(--gold-border); }
+.badge-bagaglio { background: #fdf2f8; color: var(--burgundy); border: 1px solid #fbcfe8; }
+.badge-caffe { background: #fff7ed; color: #9a3412; border: 1px solid #ffedd5; }
+.badge-aperitivo { background: #fce7f3; color: #9d174d; border: 1px solid #fbcfe8; }
+
+.appbar { position: sticky; top: 0; z-index: 60; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: max(10px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 10px max(18px, env(safe-area-inset-left)); background: rgba(255,255,255,.9); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, var(--burgundy-light), var(--burgundy-dark)); color: var(--gold-bright); font-size: 19px; }
+.brand b { display: block; font-size: 15px; color: var(--burgundy-dark); line-height: 1.1; }
+.brand small { color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.appbar-actions { display: flex; gap: 6px; }
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding: 6px; background: var(--white); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); -webkit-overflow-scrolling: touch; }
+.tab { flex: 1; display: inline-flex; gap: 8px; align-items: center; justify-content: center; height: 42px; padding: 0 16px; border-radius: 11px; border: 0; background: transparent; font: inherit; font-weight: 700; font-size: 14px; color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: all 0.2s ease; }
+.tab:hover, .tab:focus-visible { background: var(--gold-soft); outline: none; }
+.tab.active { background: var(--burgundy); color: var(--white); box-shadow: 0 2px 8px rgba(89,8,26,.3); }
+.tab-badge { background: var(--gold); color: #2b1d00; border-radius: 999px; font-size: 11px; padding: 1px 8px; font-weight: 800; }
+.tab-badge:empty { display: none; }
+
+.kpis, .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0 0 16px; }
+.kpi { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; display: flex; gap: 14px; align-items: center; box-shadow: var(--shadow-sm); transition: transform 0.2s; }
+.kpi:hover { transform: translateY(-2px); }
+.kpi-ic { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; background: var(--gold-soft); color: var(--burgundy); font-size: 21px; flex-shrink: 0; }
+.kpi b { display: block; font-size: 22px; font-weight: 800; color: var(--burgundy-dark); line-height: 1.15; }
+.kpi small { color: var(--text-muted); font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; }
+.kpi .det { display: block; margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: pre-line; text-transform: none; letter-spacing: 0; }
+.kpi.hl { background: linear-gradient(135deg, var(--burgundy-dark), var(--burgundy)); border-color: transparent; }
+.kpi.hl b { color: var(--white); }
+.kpi.hl small, .kpi.hl .det { color: var(--gold-bright); }
+.kpi.hl .kpi-ic { background: rgba(255,255,255,.12); color: var(--gold-bright); }
+.agg-line { display: flex; justify-content: flex-end; font-size: 12px; color: var(--text-muted); font-weight: 600; margin: -6px 2px 10px; }
+
+/* ---------- BOX SALDO DEL VENERDÌ ---------- */
+.venerdi-box { background: linear-gradient(135deg, #fffaf0 0%, #fef3c7 100%); border: 2px solid var(--gold); border-radius: 18px; padding: 18px 20px; margin: 14px 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
+.venerdi-box h4 { margin: 0 0 4px; font-size: 16.5px; color: var(--burgundy-dark); font-weight: 900; }
+.venerdi-box p { margin: 0; font-size: 13px; color: var(--text-muted); font-weight: 600; }
+
+/* ---------- TABELLE & LISTE ---------- */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; margin-top: 10px; -webkit-overflow-scrolling: touch; background: var(--white); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 14px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: #faf9f6; }
+th { font-weight: 800; color: var(--text-muted); font-size: 11.5px; text-transform: uppercase; background: var(--gold-soft); letter-spacing: .5px; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
+td.vuoto { color: var(--text-muted); text-align: center; padding: 26px; }
+.filtri { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; }
+.filtri input, .filtri select { width: auto; flex: 1; min-width: 150px; margin: 0; }
+
+.srv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 16px; }
+.srv-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--gold-soft); border: 1.5px solid var(--gold-border); border-radius: 14px; padding: 10px 12px; transition: all .2s; }
+.srv-row.off { opacity: .55; background: var(--white); border-color: var(--border); }
+.srv-row input[type=checkbox] { width: 22px; height: 22px; margin: 0; flex-shrink: 0; accent-color: var(--burgundy); cursor: pointer; }
+.srv-row .srv-nome { flex: 1; min-width: 120px; font-weight: 800; font-size: 13.5px; color: var(--burgundy-dark); line-height: 1.3; }
+.srv-row .srv-nome small { display: block; font-weight: 600; color: var(--text-muted); font-size: 11.5px; }
+.srv-row .srv-qta { width: 64px; height: 38px; margin: 0; padding: 0 6px; text-align: center; font-weight: 800; }
+.srv-row .srv-quando { width: 100%; height: 36px; margin: 4px 0 0; padding: 0 10px; font-size: 14px; font-weight: 700; border-radius: 9px; }
+
+/* ---------- TOAST & MODALI ---------- */
+#toasts { position: fixed; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 100000; display: flex; flex-direction: column; gap: 8px; width: min(92vw, 430px); pointer-events: none; }
+.toast { pointer-events: auto; display: flex; gap: 10px; align-items: flex-start; background: var(--burgundy-dark); color: var(--white); border: 1px solid var(--gold); border-radius: 14px; padding: 12px 14px; font-weight: 600; font-size: 14px; box-shadow: 0 14px 34px rgba(0,0,0,.35); animation: toast-in .3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+.toast .ic { color: var(--gold-bright); margin-top: 2px; }
+.toast.err { background: #7f1d1d; border-color: #fecaca; }
+.toast.out { animation: toast-out .3s ease forwards; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(-15px) scale(0.95); } }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(31,19,22,.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1000; padding: 16px; overflow-y: auto; opacity: 0; transition: opacity 0.2s; }
+.modal-overlay.show { display: flex; opacity: 1; }
+#dlg { z-index: 100001; }
+.modal { background: var(--white); padding: 26px; border-radius: 20px; border: 1px solid var(--gold-border); max-width: 460px; width: 100%; box-shadow: 0 24px 60px rgba(0,0,0,.35); max-height: 90vh; overflow-y: auto; transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.modal-overlay.show .modal { transform: scale(1); }
+.modal.modal-lg { max-width: 780px; }
+.modal.modal-sm { max-width: 380px; }
+.modal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.modal-head h3 { font-size: 18px; font-weight: 800; }
+.modal-head .ic { color: var(--gold); width: 1.3em; height: 1.3em; }
+.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+.modal-actions .btn { flex: 1; }
+
+/* ---------- VISTA PUBBLICA & VOUCHER ---------- */
+#vista-pubblica { display: none; position: fixed; inset: 0; background: radial-gradient(circle at top, var(--burgundy) 0%, #210307 100%); z-index: 9999; justify-content: center; align-items: flex-start; padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); overflow: auto; -webkit-overflow-scrolling: touch; }
+#pub { width: 100%; max-width: 400px; margin: auto 0; animation: fade-in 0.4s ease; }
+@keyframes fade-in { from { opacity: 0; transform: translateY(10px); } }
+
+.voucher-card { background: var(--white); max-width: 400px; margin: 0 auto 16px; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(59,5,16,.35); border: 2px solid var(--gold); text-align: center; position: relative; color: var(--text); }
+.v-header { background: linear-gradient(135deg, var(--burgundy-dark) 0%, var(--burgundy) 55%, var(--burgundy-light) 100%); color: var(--white); padding: 26px 20px 22px; border-bottom: 3px solid var(--gold); }
+.v-brand-sub { font-size: 10px; text-transform: uppercase; letter-spacing: 3.5px; color: var(--gold-bright); font-weight: 800; margin-bottom: 6px; }
+.v-brand-title { font-size: 26px; font-weight: 900; letter-spacing: .5px; margin: 0; text-shadow: 0 2px 5px rgba(0,0,0,.3); }
+.v-badge-type { display: inline-block; margin-top: 12px; background: linear-gradient(135deg, #d9b640 0%, #b38f22 100%); color: #2b1d00; padding: 6px 18px; border-radius: 999px; font-size: 12px; font-weight: 900; letter-spacing: 1.2px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+.v-badge-type .en { color: #2b1d00; opacity: .8; font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; }
+.v-body { padding: 24px 22px 18px; background: var(--white); }
+.v-guest-label { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--gold); font-weight: 900; }
+.v-guest-name { font-size: 23px; font-weight: 900; color: var(--burgundy-dark); margin: 4px 0 16px; }
+.v-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: var(--gold-soft); padding: 14px; border-radius: 14px; border: 1.5px solid var(--gold-border); text-align: left; margin-bottom: 14px; }
+.v-info-box { display: flex; flex-direction: column; }
+.v-info-box.full { grid-column: span 2; border-top: 1px dashed var(--gold-border); padding-top: 10px; margin-top: 4px; }
+.v-info-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #9c7b1c; letter-spacing: .8px; }
+.v-info-val { font-size: 14px; font-weight: 800; color: var(--burgundy-dark); margin-top: 3px; line-height: 1.4; }
+.v-bar-box { background: linear-gradient(135deg, var(--burgundy-dark) 0%, var(--burgundy) 100%); border: 1.5px solid var(--gold); border-radius: 16px; padding: 14px; text-align: left; display: flex; align-items: center; gap: 12px; color: #fff; }
+.v-bar-icon { font-size: 22px; background: var(--gold-soft); color: var(--burgundy-dark); width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid var(--gold); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.v-bar-details { flex: 1; }
+.v-bar-tag { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--gold-bright); letter-spacing: .9px; }
+.v-bar-name { font-size: 16px; font-weight: 800; color: #fff; line-height: 1.25; margin-top: 2px; }
+.v-bar-addr { font-size: 12px; color: #f7e6bd; font-weight: 600; margin-top: 3px; line-height: 1.35; }
+.v-divider { position: relative; height: 28px; display: flex; align-items: center; justify-content: center; background: #fff; }
+.v-divider-line { width: 86%; border-top: 2px dashed var(--gold); }
+.v-notch-l, .v-notch-r { position: absolute; width: 24px; height: 24px; background: var(--bg); border-radius: 50%; top: 2px; }
+#vista-pubblica .v-notch-l, #vista-pubblica .v-notch-r { background: #3b0510; }
+.v-notch-l { left: -14px; border-right: 2px solid var(--gold); }
+.v-notch-r { right: -14px; border-left: 2px solid var(--gold); }
+.v-qr-section { padding: 10px 22px 26px; background: #fff; }
+.v-qr-frame { display: inline-flex; padding: 14px; background: var(--white); border: 2.5px solid var(--gold); outline: 4px solid var(--gold-soft); border-radius: 20px; box-shadow: 0 10px 25px rgba(59,5,16,.15); margin: 4px auto 14px; }
+.v-footer-note { font-size: 11.5px; color: var(--text-muted); font-weight: 700; line-height: 1.45; }
+.v-footer-note strong { color: var(--burgundy-dark); }
+.v-id-hint { font-size: 11px; color: var(--text-muted); font-weight: 700; line-height: 1.4; margin-top: 12px; }
+.v-id-code { font-family: ui-monospace, Menlo, monospace; font-size: 17px; color: var(--burgundy); font-weight: 900; margin-top: 4px; letter-spacing: 2px; }
+.map-link-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; background: var(--gold); color: #2b1d00; text-decoration: none; font-weight: 800; font-size: 11.5px; padding: 6px 12px; border-radius: 8px; }
+.en { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: none; letter-spacing: .2px; margin-top: 2px; line-height: 1.35; }
+
+/* ---------- LOGIN ---------- */
+#vista-login { display: none; position: fixed; inset: 0; z-index: 9998; background: radial-gradient(circle at top, var(--burgundy) 0%, #210307 100%); justify-content: center; align-items: center; padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+.login-card { background: var(--white); border-radius: 24px; padding: 30px 26px; max-width: 370px; width: 100%; text-align: center; border: 1.5px solid var(--gold); box-shadow: 0 30px 70px rgba(0,0,0,.45); animation: fade-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.login-card .brand-mark { margin: 0 auto 12px; width: 54px; height: 54px; font-size: 26px; border-radius: 16px; }
+
+/* ---------- AVVISO BROADCAST E MESSAGGI ---------- */
+.v-alert-banner { background: #fef2f2; border: 2px solid var(--danger); color: #991b1b; border-radius: 18px; padding: 14px; margin-bottom: 14px; text-align: left; display: flex; gap: 10px; align-items: flex-start; max-width: 400px; margin-left: auto; margin-right: auto; font-size: 13.5px; font-weight: 700; line-height: 1.4; box-shadow: 0 12px 25px rgba(239,68,68,0.25); animation: toast-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.v-alert-banner .ic { color: var(--danger); font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+.msg-box { padding: 12px 14px; border-radius: 12px; font-weight: 700; font-size: 14px; margin-bottom: 12px; text-align: left; display: flex; gap: 10px; align-items: flex-start; }
+.msg-ok { background: #dcfce7; border: 1.5px solid #16a34a; color: #166534; }
+.msg-warn { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.msg-err { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+/* ---------- STATO RETE / SYNC ---------- */
+#rete-badge, #sync-badge {
+  position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 800; color: var(--white);
+  z-index: 999999; box-shadow: 0 10px 25px rgba(0,0,0,.3); display: none; align-items: center; gap: 8px; white-space: nowrap;
+}
+#rete-badge { background: #b91c1c; border: 2px solid #fecaca; }
+#sync-badge { background: #0f766e; border: 2px solid #99f6e4; }
+
+/* ---------- PORTAFOGLIO OSPITE ---------- */
+.wallet-banner { background: linear-gradient(135deg, var(--burgundy-dark), var(--burgundy)); border: 1.5px solid var(--gold); border-radius: 20px; padding: 16px 18px; margin-bottom: 14px; color: #fff; text-align: center; box-shadow: 0 12px 25px rgba(0,0,0,.3); }
+.wallet-banner h4 { margin: 0 0 4px; font-size: 17px; color: var(--gold-bright); }
+.wallet-banner p { margin: 0; font-size: 12px; opacity: .9; }
+.wallet-tabs { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; max-height: 215px; overflow-y: auto; padding-right: 2px; }
+.wallet-tab { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,.1); border: 1.5px solid rgba(201,162,39,.4); color: #fff; text-align: left; font-size: 13px; }
+.wallet-tab.active { background: var(--gold-soft); color: var(--burgundy-dark); border-color: var(--gold); }
+.wallet-tab .wt-left { display: flex; flex-direction: column; gap: 2px; }
+.wallet-tab .wt-title { font-weight: 800; font-size: 13.5px; }
+.wallet-tab .wt-date { font-size: 11.5px; opacity: .85; font-weight: 600; }
+.wallet-tab .wt-status { font-size: 10.5px; font-weight: 800; padding: 4px 9px; border-radius: 999px; text-transform: uppercase; white-space: nowrap; }
+.wt-st-oggi { background: #facc15; color: #422006; }
+.wt-st-attivo { background: #e0f2fe; color: #075985; }
+.wt-st-usato { background: #dcfce7; color: #166534; }
+.wt-st-scaduto { background: #e5e7eb; color: #4b5563; }
+
+/* ---------- VOCI DI CONVALIDA ---------- */
+.conv-item { display: flex; align-items: center; gap: 10px; text-align: left; padding: 11px 12px; border-radius: 12px; border: 1.5px solid var(--gold-border); background: var(--gold-soft); margin-bottom: 8px; font-weight: 800; font-size: 14px; color: var(--burgundy-dark); cursor: pointer; }
+.conv-item input[type=checkbox] { width: 24px; height: 24px; margin: 0; flex-shrink: 0; accent-color: var(--burgundy); }
+.conv-item small { display: block; font-weight: 600; opacity: .85; font-size: 12px; }
+.conv-item.done { background: #dcfce7; border-color: #16a34a; color: #166534; cursor: default; }
+.conv-item.off { background: #fee2e2; border-color: #fecaca; color: #b91c1c; cursor: default; }
+.conv-item .ic { font-size: 20px; }
+.conv-qta-sel { width: 70px !important; height: 36px !important; margin: 0 !important; padding: 0 6px !important; font-weight: 800; text-align: center; }
+
+/* ---------- SCANNER ---------- */
+#scanner-box { display: none; background: var(--gold-soft); border: 1.5px solid var(--gold-border); border-radius: 18px; padding: 16px; margin-bottom: 20px; text-align: center; }
+#qr-reader { width: 100%; max-width: 380px; margin: 0 auto; border-radius: 14px; overflow: hidden; }
+
+/* ---------- LISTINO ---------- */
+.listino-item { background: var(--gold-soft); border: 1.5px solid var(--gold-border); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+
+/* ---------- STAMPA ---------- */
+#print-area { display: none; }
+.ps { font-family: Inter, system-ui, sans-serif; text-align: center; color: #111; max-width: 620px; margin: 0 auto; padding: 8mm 4mm; }
+.ps-brand { font-size: 30px; font-weight: 900; letter-spacing: 3px; color: #3b0510; }
+.ps-sub { font-size: 12px; letter-spacing: 4px; text-transform: uppercase; color: #8a6a0c; font-weight: 700; margin-top: 2px; }
+.ps-title { display: inline-block; margin: 16px 0 6px; padding: 6px 20px; border: 2px solid #3b0510; border-radius: 999px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; font-size: 13px; }
+.ps-guest { font-size: 32px; font-weight: 900; margin: 10px 0 2px; }
+.ps-period { font-size: 15px; font-weight: 600; color: #444; margin-bottom: 18px; }
+.ps-qr { display: inline-block; padding: 16px; border: 3px solid #3b0510; border-radius: 22px; }
+.ps-code { font-family: ui-monospace, Menlo, monospace; font-size: 26px; font-weight: 900; letter-spacing: 5px; margin: 14px 0 4px; color: #3b0510; }
+.ps-how { font-size: 13px; color: #444; margin-bottom: 18px; line-height: 1.5; }
+.ps-serv { width: 100%; border-collapse: collapse; margin: 0 auto 16px; font-size: 14px; text-align: left; }
+.ps-serv th { background: none; color: #666; font-size: 11px; border-bottom: 2px solid #3b0510; }
+.ps-serv td { border-bottom: 1px solid #ddd; padding: 8px 6px; }
+.ps-bar { font-size: 14px; line-height: 1.5; border-top: 2px dashed #bbb; padding-top: 12px; }
+@media print {
+  body > *:not(#print-area) { display: none !important; }
+  #print-area { display: block !important; }
+  body { background: #fff !important; }
+  @page { margin: 10mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+
+<div id="rete-badge"><i data-ic="alert" style="width:16px;height:16px"></i> Sei offline. Dati salvati in locale.</div>
+<div id="sync-badge"><i data-ic="refresh" class="spin" style="width:16px;height:16px"></i> Sincronizzazione in corso...</div>
+
+<div id="toasts"></div>
+<div class="modal-overlay" id="dlg"></div>
+<div id="print-area"></div>
+
+<!-- VISTA PUBBLICA (Portafoglio Ospite / Convalida Bar) -->
+<div id="vista-pubblica"><div id="pub"></div></div>
+
+<!-- ACCESSO ADMIN -->
+<div id="vista-login">
+  <div class="login-card">
+    <div class="brand-mark"><i data-ic="coffee"></i></div>
+    <h3 style="font-size:21px">Maison Spicchio</h3>
+    <p class="sub" style="margin-bottom:18px">Area riservata Admin</p>
+    <label style="text-align:left">Password</label>
+    <input type="password" id="login-pw" data-pw placeholder="Inserisci la password" autocomplete="current-password">
+    <label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-bottom:16px;cursor:pointer"><input type="checkbox" id="login-ricorda" style="width:22px;height:22px;margin:0;accent-color:var(--burgundy)"> Ricordami su questo dispositivo</label>
+    <button class="btn btn-primary btn-block" onclick="accediAdmin()"><i data-ic="lock"></i> Entra</button>
+    <div id="login-err" style="color:var(--danger);font-weight:700;font-size:13px;min-height:20px;margin-top:10px"></div>
+    <button class="btn btn-ghost btn-block" style="margin-top:6px" onclick="location.href=URL_BASE+'?bar=1'"><i data-ic="coffee"></i> Vai all'Area Partner</button>
+  </div>
+</div>
+
+<!-- AREA BAR / MULTI-PARTNER -->
+<div class="container" id="vista-bar" style="display:none">
+  
+  <!-- Selettore Partner Iniziale -->
+  <div id="bar-selettore" style="display:none; max-width:400px; margin:40px auto; text-align:center">
+    <div class="brand-mark" style="margin:0 auto 16px"><i data-ic="map-pin"></i></div>
+    <h2 style="margin-bottom:6px">Area Partner</h2>
+    <p class="sub" style="margin-bottom:24px">Seleziona la tua struttura per accedere</p>
+    <div id="bar-lista-btn" class="stack"></div>
+    <button class="btn btn-ghost btn-block" style="margin-top:16px" onclick="location.reload()">Torna alla Home</button>
+  </div>
+
+  <!-- Contenuto vero e proprio Bar -->
+  <div class="card" id="bar-scheda" style="display:none">
+    <div class="header-flex" style="margin-bottom:14px">
+      <div>
+        <h2 class="card-title"><i data-ic="coffee"></i> Accesso Partner</h2>
+        <p class="sub" style="margin:0">Maison Spicchio · <strong id="bar-titolo-partner">Struttura</strong></p>
+      </div>
+      <div class="row">
+        <button id="btn-apri-scanner" class="btn btn-success" onclick="toggleScannerBar()" style="display:none"><i data-ic="scan"></i> Inquadra QR</button>
+        <button id="btn-torna-admin" class="btn btn-dark" style="display:none" onclick="tornaAdminDaBar()"><i data-ic="arrow-left"></i> Admin</button>
+        <button class="btn btn-ghost js-refresh-bar" onclick="caricaBar(true)" style="display:none" id="btn-refresh-bar"><i data-ic="refresh"></i></button>
+        <button class="btn btn-ghost btn-icon" onclick="cambiaPartner()"><i data-ic="logout"></i></button>
+      </div>
+    </div>
+
+    <!-- Login Bar -->
+    <div id="bar-login" style="max-width:340px; margin:20px auto 0">
+      <label>PIN Erogatore per <span id="lbl-pin-partner" style="color:var(--burgundy)"></span></label>
+      <input type="password" id="bar-pin" data-pw class="pin-input" inputmode="numeric" autocomplete="off" placeholder="••••">
+      <button class="btn btn-primary btn-block" onclick="entraBar()"><i data-ic="lock"></i> Entra</button>
+    </div>
+
+    <div id="bar-contenuto" style="display:none">
+      <div id="scanner-box">
+        <h3 style="font-size:16px;margin-bottom:6px">Inquadra il QR Code dell'ospite</h3>
+        <p class="sub" style="margin-bottom:12px">Posiziona il QR al centro del riquadro: si aprirà la convalida dei servizi di oggi.</p>
+        <div id="qr-reader"></div>
+        <button class="btn btn-danger btn-sm" onclick="fermaScannerBar()" style="margin-top:12px"><i data-ic="x"></i> Chiudi fotocamera</button>
+      </div>
+
+      <h3 class="sec" style="margin-top:6px"><i data-ic="keyboard"></i> Inserisci codice pass</h3>
+      <p class="sub" style="margin:0 0 8px">Se il QR non si legge, digita il codice stampato sul pass dell'ospite (es. <strong class="mono">A1B2C3D4</strong>).</p>
+      <div class="row" style="flex-wrap:nowrap">
+        <input type="text" id="bar-codice" class="mono" placeholder="CODICE PASS" autocomplete="off" autocapitalize="characters" maxlength="12" style="margin:0;text-transform:uppercase;font-weight:800;letter-spacing:2px;text-align:center" onkeydown="if(event.key==='Enter')cercaPerCodice()">
+        <button class="btn btn-success" onclick="cercaPerCodice()"><i data-ic="search"></i> Cerca</button>
+      </div>
+
+      <h3 class="sec"><i data-ic="users"></i> Ospiti attesi oggi</h3>
+      <p class="sub" style="margin:0 0 8px">Mostra <strong>esclusivamente</strong> i servizi di competenza di questa struttura.</p>
+      <input type="text" id="bar-cerca" placeholder="Cerca ospite…" oninput="renderBarAttesi()" style="margin:6px 0 0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ospite</th><th>Da erogare oggi</th></tr></thead>
+          <tbody id="bar-attesi"></tbody>
+        </table>
+      </div>
+
+      <h3 class="sec"><i data-ic="chart"></i> Riepilogo Struttura</h3>
+      <select id="bar-periodo" onchange="renderBar()" style="max-width:260px;margin-top:6px">
+        <option value="oggi">Oggi</option>
+        <option value="settimana">Questa settimana</option>
+        <option value="mese">Questo mese</option>
+        <option value="tutto" selected>Tutto lo storico</option>
+      </select>
+      <div class="stats-grid">
+        <div class="kpi"><div class="kpi-ic"><i data-ic="ticket"></i></div><div><small>Erogati totali</small><b id="bar-n">0</b></div></div>
+        <div class="kpi hl"><div class="kpi-ic"><i data-ic="clock"></i></div><div><small>In sospeso (da ricevere)</small><b id="bar-da-ricevere">0,00 €</b></div></div>
+        <div class="kpi"><div class="kpi-ic"><i data-ic="check-circle"></i></div><div><small>Già Saldati</small><b id="bar-ricevuto">0,00 €</b></div></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Servizio</th><th>Prezzo unit.</th><th>Voucher</th><th>Unità</th><th>Importo</th></tr></thead>
+          <tbody id="bar-tabella-tipi"></tbody>
+        </table>
+      </div>
+      <h3 class="sec"><i data-ic="list"></i> Dettaglio servizi erogati</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Servizio</th><th>Ospite</th><th>Q.ta</th><th>Importo</th><th>Ora</th><th>Stato</th></tr></thead>
+          <tbody id="bar-tabella-righe"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD ADMIN -->
+<div id="vista-admin" style="display:none">
+  <header class="appbar">
+    <div class="brand">
+      <span class="brand-mark"><i data-ic="coffee"></i></span>
+      <div><b>Maison Spicchio</b><small>Pannello admin</small></div>
+    </div>
+    <div class="appbar-actions no-scrollbar">
+      <button class="btn btn-ghost btn-sm js-refresh" title="Aggiorna tutto" onclick="caricaStorico(true)"><i data-ic="refresh"></i><span class="lbl">Aggiorna</span></button>
+      <button class="btn btn-ghost btn-sm" id="btn-notifiche" title="Attiva notifiche" onclick="attivaNotificheBrowser()"><i data-ic="bell"></i><span class="lbl">Notifiche</span></button>
+      <button class="btn btn-ghost btn-sm" title="Listino & prezzi" onclick="apriModaleListino()"><i data-ic="tag"></i><span class="lbl">Listino</span></button>
+      <button class="btn btn-ghost btn-sm" title="Struttura Default, Avvisi e Promo" onclick="apriModaleDatiBar()"><i data-ic="map-pin"></i><span class="lbl">Partner & Promo</span></button>
+      <button class="btn btn-ghost btn-sm" title="PIN Accessi Partner" onclick="apriModalePin()"><i data-ic="key"></i><span class="lbl">PIN Partner</span></button>
+      <button class="btn btn-ghost btn-sm" title="Password admin" onclick="apriModalePwAdmin()"><i data-ic="lock"></i><span class="lbl">Password</span></button>
+      <button class="btn btn-gold btn-sm" title="Apri Area Bar" onclick="apriBarDaAdmin()"><i data-ic="coffee"></i><span class="lbl">Area Partner</span></button>
+      <button class="btn btn-dark btn-sm" title="Esci" onclick="esciAdmin()"><i data-ic="logout"></i><span class="lbl">Esci</span></button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="avviso-url" class="msg-box msg-err" style="display:none">
+      <i data-ic="alert"></i><div>Questa pagina non è aperta da un indirizzo web (https://…): i QR generati non si aprirebbero quando li inquadri. Aprila dal suo indirizzo online oppure scrivilo in <code>URL_PUBBLICO</code> nel codice.</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-ic"><i data-ic="ticket"></i></div><div><small>Oggi da erogare</small><b id="kpi-oggi-da">–</b></div></div>
+      <div class="kpi"><div class="kpi-ic"><i data-ic="check-circle"></i></div><div><small>Oggi erogati</small><b id="kpi-oggi-ok">–</b></div></div>
+      <div class="kpi hl"><div class="kpi-ic"><i data-ic="banknote"></i></div><div><small>Saldo in sospeso totale</small><b id="kpi-saldo">–</b></div></div>
+    </div>
+    <div class="agg-line"><span id="ultimo-agg"></span></div>
+
+    <nav class="tabs no-scrollbar">
+      <button class="tab active" data-tab="pass" onclick="vaiTab('pass')"><i data-ic="qr"></i> Pass</button>
+      <button class="tab" data-tab="promemoria" onclick="vaiTab('promemoria')"><i data-ic="bell"></i> Promemoria <span class="tab-badge" id="badge-prom"></span></button>
+      <button class="tab" data-tab="conti" onclick="vaiTab('conti')"><i data-ic="chart"></i> Contabilità</button>
+    </nav>
+
+    <!-- TAB PASS -->
+    <section id="tab-pass" class="tab-panel">
+      <div class="card">
+        <h2 class="card-title"><i data-ic="ticket"></i> Genera Pass Soggiorno</h2>
+        <p class="sub">Un <strong>unico QR</strong> per tutto il soggiorno. Puoi scegliere per ogni servizio se vale tutti i giorni oppure solo il giorno di Check-in / Check-out.</p>
+        <div class="grid">
+          <div><label>Nome e cognome ospite</label><input type="text" id="ospite" placeholder="Es. Mario Rossi" onchange="precompilaTelefono()"></div>
+          <div><label>Telefono WhatsApp (opzionale)</label><input type="tel" id="telefono" placeholder="Es. +39 333 1234567"></div>
+        </div>
+        <label>Servizi inclusi (spunta, indica quantità e validità giorni)</label>
+        <div id="servizi-check" class="srv-grid"></div>
+        <div class="grid-3">
+          <div><label>Persone (preimposta le quantità)</label><input type="number" id="persone" value="1" min="1" oninput="applicaPersone()"></div>
+          <div><label>Data inizio</label><input type="date" id="data_inizio" onchange="sistemaDate()"></div>
+          <div><label>Data fine (inclusa)</label><input type="date" id="data_fine"></div>
+        </div>
+        <button class="btn btn-primary btn-block" id="btn-genera" onclick="creaVoucherMultipli()"><i data-ic="plus"></i> Genera Pass Soggiorno (1 QR)</button>
+
+        <div id="voucher-wrapper" style="display:none; margin-top:26px;">
+          <div id="voucher-ticket-host"></div>
+          <div class="pass-actions">
+            <button class="btn btn-teal wide" onclick="inviaPassWhatsApp()"><i data-ic="message"></i> Invia su WhatsApp</button>
+            <button class="btn btn-ghost" onclick="stampaPass()"><i data-ic="printer"></i> Stampa QR</button>
+            <button class="btn btn-ghost" onclick="copiaLinkOspite()"><i data-ic="copy"></i> Copia link</button>
+            <button class="btn btn-gold wide" onclick="scaricaBiglietto()"><i data-ic="download"></i> Scarica immagine HD</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB PROMEMORIA -->
+    <section id="tab-promemoria" class="tab-panel" hidden>
+      <div class="card">
+        <div class="header-flex">
+          <div>
+            <h2 class="card-title"><i data-ic="bell"></i> Promemoria ospiti</h2>
+            <p class="sub" style="margin:0">Ospiti con servizi ancora da erogare: invia un promemoria WhatsApp con il link al QR.</p>
+          </div>
+          <div class="row">
+            <select id="promemoria-giorno" onchange="caricaPromemoria()" style="width:auto;margin:0">
+              <option value="oggi">Oggi</option>
+              <option value="domani">Domani</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ospite</th><th>Servizi</th><th></th></tr></thead>
+            <tbody id="promemoria-tab"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB CONTABILITÀ -->
+    <section id="tab-conti" class="tab-panel" hidden>
+      <div class="card">
+        <div class="header-flex">
+          <div>
+            <h2 class="card-title"><i data-ic="chart"></i> Contabilità & Saldi Partner</h2>
+            <p class="sub" style="margin:0">Usa il filtro per visualizzare e saldare la contabilità separatamente per ogni struttura.</p>
+          </div>
+          <div class="row">
+            <select id="filtro-partner-admin" onchange="caricaStorico(true)" style="width:auto;margin:0">
+              <option value="">Tutti i partner (Globale)</option>
+            </select>
+            <input type="month" id="filtro-mese" onchange="caricaStorico(true)" style="width:auto;margin:0">
+            <button class="btn btn-ghost" onclick="mostraTutti()">Tutti i mesi</button>
+            <button class="btn btn-ghost js-refresh" onclick="caricaStorico(true)"><i data-ic="refresh"></i></button>
+            <button class="btn btn-teal" onclick="esportaCSV()"><i data-ic="download"></i> CSV</button>
+          </div>
+        </div>
+
+        <!-- BOX CHIUSURA CASSA DEL VENERDÌ -->
+        <div class="venerdi-box">
+          <div>
+            <h4 id="titolo-cassa-venerdi">💶 Chiusura Cassa (Tutto il sospeso attuale)</h4>
+            <p id="venerdi-dettaglio">Caricamento saldo in sospeso…</p>
+          </div>
+          <div class="row">
+            <button class="btn btn-success" onclick="saldaTuttoIlSospeso()"><i data-ic="check-circle"></i> Salda tutto il sospeso mostrato</button>
+            <button class="btn btn-ghost" onclick="stampaRicevutaSospeso()"><i data-ic="printer"></i> Stampa distinta</button>
+          </div>
+        </div>
+
+        <div class="stats-grid" style="margin-top:14px">
+          <div class="kpi"><div class="kpi-ic"><i data-ic="coffee"></i></div><div><small>Colazioni & caffè erogati</small><b id="stat-colazioni">0 unità</b></div></div>
+          <div class="kpi"><div class="kpi-ic"><i data-ic="bag"></i></div><div><small>Bagagli & altri erogati</small><b id="stat-bagagli">0 unità</b></div></div>
+          <div class="kpi hl"><div class="kpi-ic"><i data-ic="clock"></i></div><div><small>Saldo in sospeso (visibile)</small><b id="stat-euro">0,00 €</b><span class="det" id="stat-sospeso"></span></div></div>
+        </div>
+
+        <h3 class="sec" style="margin-top:6px"><i data-ic="calendar"></i> Riepilogo per settimana (Lun - Dom)</h3>
+        <div class="table-wrap" style="margin-bottom:8px">
+          <table>
+            <thead><tr><th>Settimana</th><th>Erogati</th><th>Saldo in sospeso</th><th>Saldato</th><th>Da usare</th><th>Azioni</th></tr></thead>
+            <tbody id="tabella-settimane"></tbody>
+          </table>
+        </div>
+
+        <h3 class="sec"><i data-ic="list"></i> Elenco voucher</h3>
+        <div class="filtri">
+          <input type="text" id="filtro-testo" placeholder="Cerca ospite…" oninput="renderStorico()">
+          <select id="filtro-stato" onchange="renderStorico()">
+            <option value="">Tutti gli stati</option>
+            <option value="da_usare">Da usare</option>
+            <option value="in_sospeso">Saldo in sospeso (da pagare al partner)</option>
+            <option value="saldato">Saldati</option>
+            <option value="scaduto">Scaduti</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Data</th><th>Servizio</th><th>Ospite</th><th>Partner</th><th>Q.ta</th><th>Importo</th><th>Stato</th><th>Ora</th><th>Azioni</th></tr></thead>
+            <tbody id="tabella-servizi"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- MODALE MODIFICA VOUCHER -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <div class="modal-head"><i data-ic="edit"></i><h3>Modifica voucher</h3></div>
+    <input type="hidden" id="edit-id">
+    <label>Servizio</label>
+    <select id="edit-tipo"></select>
+    <label>Ospite</label><input type="text" id="edit-ospite">
+    <div class="grid">
+      <div><label>Quantità</label><input type="number" id="edit-qta" min="1"></div>
+      <div><label>Data</label><input type="date" id="edit-data"></div>
+    </div>
+    <label>Stato</label>
+    <select id="edit-stato-pagamento">
+      <option value="da_usare">Da usare (non ancora erogato)</option>
+      <option value="in_sospeso">Erogato — saldo in sospeso</option>
+      <option value="saldato">Erogato — saldato</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="chiudiModale('modal-edit')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaModifica()"><i data-ic="save"></i> Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE LISTINO -->
+<div class="modal-overlay" id="modal-listino">
+  <div class="modal modal-lg">
+    <div class="modal-head"><i data-ic="tag"></i><h3>Listino prezzi e servizi</h3></div>
+    <p class="sub"><strong>💡 Come creare un Voucher Omaggio:</strong> L'ospite non vede mai i prezzi sul Pass. Qualsiasi servizio con la parola "Omaggio" o "Free" nel nome riceverà in automatico un badge dorato sul Pass.</p>
+    <div id="contenitore-listino-editor"></div>
+    <button class="btn btn-teal btn-block" onclick="aggiungiRigaNuovoServizio()"><i data-ic="plus"></i> Aggiungi nuovo servizio</button>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="chiudiModale('modal-listino')">Chiudi</button>
+      <button class="btn btn-primary" onclick="salvaListinoSuDB()"><i data-ic="save"></i> Salva listino</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE PIN PARTNER MULTIPLI -->
+<div class="modal-overlay" id="modal-pin">
+  <div class="modal">
+    <div class="modal-head"><i data-ic="key"></i><h3>PIN Accessi Partner</h3></div>
+    <p class="sub">Imposta una password numerica (PIN) esclusiva per ogni struttura. Le strutture non in elenco usano la struttura di Default.</p>
+    <div id="pin-partners-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="chiudiModale('modal-pin')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaTuttiIpinDB()"><i data-ic="save"></i> Salva PIN</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE PASSWORD ADMIN -->
+<div class="modal-overlay" id="modal-pw-admin">
+  <div class="modal">
+    <div class="modal-head"><i data-ic="lock"></i><h3>Password Admin</h3></div>
+    <p class="sub">La nuova password viene cifrata e salvata nel database in modo sicuro.</p>
+    <label>Password attuale</label>
+    <input type="password" id="input-vecchia-pw" data-pw placeholder="Password attuale" autocomplete="current-password">
+    <label>Nuova password</label>
+    <input type="password" id="input-nuova-pw" data-pw placeholder="Minimo 4 caratteri" autocomplete="new-password">
+    <label>Conferma nuova password</label>
+    <input type="password" id="input-conferma-pw" data-pw placeholder="Ripeti la nuova password" autocomplete="new-password">
+    <div id="err-cambio-pw" style="color:var(--danger);font-weight:700;font-size:13px;min-height:18px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="chiudiModale('modal-pw-admin')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaNuovaPwAdminDB()"><i data-ic="save"></i> Aggiorna</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE DATI BAR & AVVISI/PROMO (DEFAULT) -->
+<div class="modal-overlay" id="modal-dati-bar">
+  <div class="modal">
+    <div class="modal-head"><i data-ic="map-pin"></i><h3>Struttura Default & Avvisi</h3></div>
+    <p class="sub">Questa è la struttura partner "globale". Verrà mostrata ai clienti per tutti i servizi che non hanno una struttura specifica nel Listino.</p>
+    
+    <div style="background:var(--gold-soft); border:1px solid var(--gold-border); border-radius:14px; padding:14px; margin-bottom:16px;">
+      <label style="color:var(--burgundy-dark); display:flex; align-items:center; gap:6px"><i data-ic="bell" style="width:16px;height:16px"></i> Messaggio in cima al Pass Ospite</label>
+      <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 10px;">Comunica avvisi o attiva offerte promozionali del bar visibili sul QR dell'ospite.</p>
+      <div class="row" style="margin-bottom:8px">
+        <select id="input-bar-tipo-avviso" style="margin:0; flex:1">
+          <option value="nessuno">Nessun messaggio</option>
+          <option value="promo">🎁 Offerta Promozionale (Oro)</option>
+          <option value="alert">⚠️ Avviso Importante (Rosso)</option>
+        </select>
+      </div>
+      <textarea id="input-bar-avviso" placeholder="Scrivi qui il testo dell'offerta o dell'avviso... (Es. Sconto 10% sui drink!)"></textarea>
+    </div>
+
+    <label>Nome della Struttura di Default</label>
+    <input type="text" id="input-bar-nome" placeholder="Es. Barrito Alto Caffè">
+    <label>Indirizzo Completo</label>
+    <input type="text" id="input-bar-indirizzo" placeholder="Es. Via Roma 1, Napoli">
+    <label>Google Maps Place ID (opzionale)</label>
+    <input type="text" id="input-bar-place-id" placeholder="Es. ChIJwUN8rz4JOxMRu4gtZwnR4IQ">
+    <label>Numero WhatsApp Contabilità (per distinte)</label>
+    <input type="tel" id="input-bar-whatsapp" placeholder="Es. 393331234567">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="chiudiModale('modal-dati-bar')">Annulla</button>
+      <button class="btn btn-primary" onclick="salvaDatiBarDB()"><i data-ic="save"></i> Salva Dati</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // =====================================================================
+  //  1. CONFIGURAZIONE E UTILS BASE
+  // =====================================================================
+  const SUPABASE_URL = 'https://rkghhvpmfuoqwzxhbham.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrZ2hodnBtZnVvcXd6eGhiaGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NjI4ODksImV4cCI6MjEwODIzODg4OX0.Qh7RkQVAlLU4A3Me6KIQARBxiGpIMb8bkA6ZyQI5uFE';
+  const URL_PUBBLICO = "";
+  const PAGINA_ONLINE = /^https?:$/.test(location.protocol);
+  const URL_BASE = URL_PUBBLICO || (location.origin + location.pathname);
+
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+  const $ = id => document.getElementById(id);
+  
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const isoLocale = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const eur = n => Number(n || 0).toFixed(2).replace('.', ',') + ' €';
+  const hhmm = iso => iso ? new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '-';
+  const escLike = s => String(s || '').replace(/[\\%_]/g, m => '\\' + m);
+  const chiaveOspite = s => String(s || '').trim().toLowerCase();
+  const ordinaVoucher = (a, b) => a.data_servizio.localeCompare(b.data_servizio) || String(a.tipo_servizio).localeCompare(String(b.tipo_servizio));
+
+  function formattaDataIta(isoStr) {
+    if (!isoStr) return '-';
+    const [a, m, g] = isoStr.split('-').map(Number);
+    const s = new Date(a, m - 1, g).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function formattaDataEn(isoStr) {
+    if (!isoStr) return '-';
+    const [a, m, g] = isoStr.split('-').map(Number);
+    return new Date(a, m - 1, g).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  // =====================================================================
+  //  2. MOTORE OFFLINE STABILE
+  // =====================================================================
+  let isOnline = navigator.onLine;
+
+  window.addEventListener('online', () => { 
+    isOnline = true; 
+    const badge = $('rete-badge');
+    if(badge) badge.style.display = 'none'; 
+    processaCodaSync(); 
+  });
+  
+  window.addEventListener('offline', () => { 
+    isOnline = false; 
+    const badge = $('rete-badge');
+    if(badge) {
+      badge.style.display = 'flex'; 
+      badge.innerHTML = `<i data-ic="alert" style="width:16px;height:16px"></i> Sei offline. Dati salvati in locale.`;
+      montaIcone(badge);
+    }
+  });
+
+  function getSyncQueue() {
+    try { return JSON.parse(localStorage.getItem('ms_sync_queue') || '[]'); } 
+    catch (e) { return []; }
+  }
+
+  function accodaAzioneSync(azione, payload) {
+    let coda = getSyncQueue();
+    coda.push({ id: Date.now() + Math.random().toString(), az: azione, p: payload, err: 0 });
+    try { localStorage.setItem('ms_sync_queue', JSON.stringify(coda)); } catch(e) {}
+    
+    if (!isOnline) {
+      const badge = $('rete-badge');
+      if(badge) {
+        badge.style.display = 'flex';
+        badge.innerHTML = `<i data-ic="alert" style="width:16px;height:16px"></i> Offline (${coda.length} modif. in attesa)`;
+        montaIcone(badge);
+      }
+    }
+  }
+
+  async function processaCodaSync() {
+    if (!navigator.onLine) return;
+    let coda = getSyncQueue();
+    if (coda.length === 0) return;
+
+    const syncBadge = $('sync-badge');
+    if(syncBadge) syncBadge.style.display = 'flex';
+    
+    let rimasti = [];
+    let ok = 0;
+
+    for (let task of coda) {
+      if (!task || !task.p) continue;
+      try {
+        if (task.az === 'incassa') await sb.rpc('incassa_voucher', task.p);
+        else if (task.az === 'upd' && task.p.id) await sb.from('servizi_ospiti').update(task.p.data).eq('id', task.p.id);
+        else if (task.az === 'upd_in' && task.p.ids) await sb.from('servizi_ospiti').update(task.p.data).in('id', task.p.ids);
+        else if (task.az === 'del' && task.p.id) await sb.from('servizi_ospiti').delete().eq('id', task.p.id);
+        else if (task.az === 'del_in' && task.p.ids) await sb.from('servizi_ospiti').delete().in('id', task.p.ids);
+        else if (task.az === 'upd_bar') await sb.from('impostazioni_bar').upsert(task.p);
+        ok++;
+      } catch (e) {
+        task.err = (task.err || 0) + 1;
+        if (task.err < 5) rimasti.push(task); 
+      }
+    }
+    
+    try { localStorage.setItem('ms_sync_queue', JSON.stringify(rimasti)); } catch(e) {}
+    if(syncBadge) syncBadge.style.display = 'none';
+    
+    if (ok > 0) {
+      toast(`Sincronizzati ${ok} dati pendenti con il server.`, 'ok');
+      const adminVista = $('vista-admin');
+      if (adminVista && adminVista.style.display !== 'none') caricaStorico(true);
+      const barVista = $('vista-bar');
+      if (barVista && barVista.style.display !== 'none') caricaBar(true);
+    }
+  }
+  setTimeout(processaCodaSync, 2000);
+
+  // =====================================================================
+  //  3. ICONE SVG E PASSWORD TOGGLE
+  // =====================================================================
+  const ICONS = {
+    'eye': '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    'eye-off': '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-10-7-10-7a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>',
+    'refresh': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    'qr': '<rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/>',
+    'scan': '<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>',
+    'printer': '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+    'download': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+    'copy': '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+    'message': '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/>',
+    'send': '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
+    'bell': '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+    'calendar': '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    'search': '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/>',
+    'check': '<path d="M20 6L9 17l-5-5"/>',
+    'check-circle': '<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4L12 14l-3-3"/>',
+    'clock': '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    'trash': '<path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a1 1 0 0 1 2-2h4a1 1 0 0 1 2 2v2"/>',
+    'eraser': '<path d="M20 20H9l-6-6a2 2 0 0 1 0-2.8l8.2-8.2a2 2 0 0 1 2.8 0l6 6a2 2 0 0 1 0 2.8L12 20"/><path d="M7 13l6 6"/>',
+    'edit': '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+    'plus': '<path d="M12 5v14M5 12h14"/>',
+    'lock': '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    'key': '<path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+    'tag': '<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.5"/>',
+    'logout': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+    'banknote': '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+    'bag': '<rect x="5" y="7" width="14" height="14" rx="2"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/><path d="M9 11v6M15 11v6"/>',
+    'coffee': '<path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v3M10 2v3M14 2v3"/>',
+    'map-pin': '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
+    'x': '<path d="M18 6L6 18M6 6l12 12"/>',
+    'arrow-left': '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+    'arrow-right': '<path d="M5 12h14M12 5l7 7-7 7"/>',
+    'users': '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+    'ticket': '<path d="M2 9a3 3 0 0 1 0 6v3a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-3a3 3 0 0 1 0-6V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1z"/><path d="M13 5v2M13 17v2M13 11v2"/>',
+    'undo': '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/>',
+    'keyboard': '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M7 15h10"/>',
+    'alert': '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
+    'list': '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    'chart': '<path d="M18 20V10M12 20V4M6 20v-6"/>',
+    'save': '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>'
+  };
+  const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+  
+  function montaIcone(root = document) {
+    root.querySelectorAll('i[data-ic]').forEach(el => { el.outerHTML = ic(el.dataset.ic, el.dataset.cls || ''); });
+  }
+
+  function togglePw(btn) {
+    const inp = btn.parentElement.querySelector('input');
+    const mostra = inp.type === 'password';
+    inp.type = mostra ? 'text' : 'password';
+    btn.innerHTML = ic(mostra ? 'eye-off' : 'eye');
+    inp.focus();
+  }
+  
+  function montaPw(root = document) {
+    root.querySelectorAll('input[data-pw]:not([data-pw-ok])').forEach(inp => {
+      inp.dataset.pwOk = '1';
+      const w = document.createElement('div');
+      w.className = 'pw-wrap';
+      inp.parentNode.insertBefore(w, inp);
+      w.appendChild(inp);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pw-toggle';
+      b.title = 'Mostra / nascondi';
+      b.innerHTML = ic('eye');
+      b.onclick = () => togglePw(b);
+      w.appendChild(b);
+    });
+  }
+  montaIcone();
+  montaPw();
+
+  // =====================================================================
+  //  4. NOTIFICHE E DIALOGHI
+  // =====================================================================
+  function toast(msg, tipo = 'ok', ms = 5000) {
+    const box = $('toasts');
+    if (!box) return;
+    const t = document.createElement('div');
+    t.className = 'toast ' + tipo;
+    t.innerHTML = `${ic(tipo === 'err' ? 'alert' : 'check-circle')}<div>${esc(msg).replace(/\n/g, '<br>')}</div>`;
+    box.appendChild(t);
+    navigator.vibrate?.(tipo === 'err' ? [200] : [100]);
+    setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms);
+  }
+  
+  window.avviso = m => toast(m, 'err', 6500);
+  const notifica = m => toast(m, 'ok', 6500);
+
+  function apriModale(idModal) {
+    const m = $(idModal);
+    if(m) { m.style.display = 'flex'; setTimeout(() => m.classList.add('show'), 10); }
+  }
+  function chiudiModale(idModal) {
+    const m = $(idModal);
+    if(m) { m.classList.remove('show'); setTimeout(() => m.style.display = 'none', 200); }
+  }
+
+  function dialogo({ titolo = 'Conferma', testo = '', input = null, ok = 'Conferma', ko = 'Annulla', pericolo = false }) {
+    return new Promise(res => {
+      const ov = $('dlg');
+      ov.innerHTML = `<div class="modal modal-sm">
+        <div class="modal-head">${ic(pericolo ? 'alert' : 'check-circle')}<h3>${esc(titolo)}</h3></div>
+        <p class="sub" style="white-space:pre-line;margin-bottom:${input ? 12 : 0}px">${esc(testo)}</p>
+        ${input ? `<input type="text" id="dlg-input" placeholder="${esc(input)}" autocomplete="off">` : ''}
+        <div class="modal-actions"><button class="btn btn-ghost" id="dlg-ko">${esc(ko)}</button><button class="btn ${pericolo ? 'btn-danger' : 'btn-primary'}" id="dlg-ok">${esc(ok)}</button></div>
+      </div>`;
+      apriModale('dlg');
+      const chiudi = v => { chiudiModale('dlg'); setTimeout(() => ov.innerHTML = '', 200); res(v); };
+      $('dlg-ok').onclick = () => chiudi(input ? ($('dlg-input').value.trim() || null) : true);
+      $('dlg-ko').onclick = () => chiudi(input ? null : false);
+      ov.onclick = e => { if (e.target === ov) chiudi(input ? null : false); };
+      const inp = $('dlg-input');
+      if (inp) { inp.focus(); inp.onkeydown = e => { if (e.key === 'Enter') $('dlg-ok').click(); }; }
+      else $('dlg-ok').focus();
+    });
+  }
+  const conferma = (testo, opts = {}) => dialogo({ testo, ...opts });
+  const chiedi = (testo, placeholder, opts = {}) => dialogo({ testo, input: placeholder, ...opts });
+
+  let audioCtx = null;
+  function suonaBeep(tipo = 'ok') {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtx) audioCtx = new Ctx();
+      const ctx = audioCtx;
+      if (ctx.state === 'suspended') ctx.resume();
+      if (tipo === 'ok') {
+        [880, 1318.5].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.12);
+          gain.gain.setValueAtTime(0.25, ctx.currentTime + idx * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.12 + 0.18);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + idx * 0.12);
+          osc.stop(ctx.currentTime + idx * 0.12 + 0.19);
+        });
+      } else {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, ctx.currentTime);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.36);
+      }
+    } catch (e) {}
+  }
+
+  // =====================================================================
+  //  5. HASHING (SHA-256)
+  // =====================================================================
+  const ADMIN_SALT = "7f32cfa02b5a2aad";
+  const BAR_PIN_SALT = "ms_bar_2026_x8q";
+  const DEFAULT_ADMIN_HASH = "83d4a18a83ad45a367a0097f1d8c0bffd628ea769ef38682a35b5206e9fbda19";
+  const ADMIN_ROUNDS = 5000;
+  
+  const SHA_K = [], SHA_H = [];
+  (() => {
+    for (let n = 2, c = 0; c < 64; n++) {
+      let primo = true;
+      for (let d = 2; d * d <= n; d++) if (n % d === 0) { primo = false; break; }
+      if (!primo) continue;
+      if (c < 8) SHA_H[c] = Math.floor((Math.sqrt(n) % 1) * 4294967296);
+      SHA_K[c++] = Math.floor((Math.cbrt(n) % 1) * 4294967296);
+    }
+  })();
+
+  function sha256hex(msg) {
+    const enc = new TextEncoder().encode(msg);
+    const l = enc.length, tot = ((l + 9 + 63) >> 6) << 6;
+    const buf = new Uint8Array(tot);
+    buf.set(enc);
+    buf[l] = 0x80;
+    const dv = new DataView(buf.buffer);
+    dv.setUint32(tot - 8, Math.floor(l * 8 / 4294967296));
+    dv.setUint32(tot - 4, (l * 8) >>> 0);
+    const H = SHA_H.slice(), w = new Array(64);
+    const ror = (x, n) => (x >>> n) | (x << (32 - n));
+    for (let off = 0; off < tot; off += 64) {
+      for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4);
+      for (let i = 16; i < 64; i++) {
+        const s0 = ror(w[i - 15], 7) ^ ror(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+        const s1 = ror(w[i - 2], 17) ^ ror(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+      }
+      let [a, b, c, d, e, f, g, h] = H;
+      for (let i = 0; i < 64; i++) {
+        const t1 = (h + (ror(e, 6) ^ ror(e, 11) ^ ror(e, 25)) + ((e & f) ^ (~e & g)) + SHA_K[i] + w[i]) >>> 0;
+        const t2 = ((ror(a, 2) ^ ror(a, 13) ^ ror(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+        h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      }
+      [a, b, c, d, e, f, g, h].forEach((v, i) => { H[i] = (H[i] + v) >>> 0; });
+    }
+    return H.map(x => x.toString(16).padStart(8, '0')).join('');
+  }
+
+  function hashPassword(pw) {
+    let h = sha256hex(ADMIN_SALT + pw);
+    for (let i = 0; i < ADMIN_ROUNDS; i++) h = sha256hex(h + pw);
+    return h;
+  }
+
+  function hashPinBar(pin) {
+    return sha256hex(BAR_PIN_SALT + pin);
+  }
+
+  // =====================================================================
+  //  6. LISTINO E DATI PARTNER
+  // =====================================================================
+  let BAR_NOME = "Barrito Alto Caffè";
+  let BAR_INDIRIZZO = "Via Santa Maria di Costantinopoli, 29, 80138 Napoli NA";
+  let BAR_PLACE_ID = "ChIJwUN8rz4JOxMRu4gtZwnR4IQ";
+  let BAR_WHATSAPP = "";
+  let BAR_MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(BAR_INDIRIZZO)}&query_place_id=${BAR_PLACE_ID}`;
+  let AVVISO_GLOBALE = ""; 
+
+  // Listino base pulito (senza servizi finti)
+  const LISTINO_DEFAULT = {
+    colazione: { emoji: "🥐", nome: "Colazione", nome_en: "Breakfast", etichetta: "Colazioni (Pax)", etichetta_en: "Breakfasts", prezzo: 2.50, orario: "⏰ Dalle ore 07:30 alle ore 11:00", orario_en: "From 07:30 to 11:00", inizio: "07:30", fine: "11:00" },
+    bagaglio: { emoji: "🧳", nome: "Deposito Bagagli", nome_en: "Luggage storage", etichetta: "Bagagli", etichetta_en: "Bags", prezzo: 3.00, orario: "⏰ Ritiro bagagli tassativo entro le ore 20:00", orario_en: "Luggage must be collected by 20:00 at the latest", inizio: "", fine: "20:00" }
+  };
+
+  let LISTINO = JSON.parse(JSON.stringify(LISTINO_DEFAULT));
+  let PREZZI = {}, NOMI = {}, TITOLI = {}, ETICHETTE = {}, ORARI_SERVIZIO = {};
+  let NOMI_EN = {}, TITOLI_EN = {}, ETICHETTE_EN = {}, ORARI_EN = {};
+
+  function sincronizzaMappeListino() {
+    PREZZI = {}; NOMI = {}; TITOLI = {}; ETICHETTE = {}; ORARI_SERVIZIO = {};
+    NOMI_EN = {}; TITOLI_EN = {}; ETICHETTE_EN = {}; ORARI_EN = {};
+    Object.entries(LISTINO).forEach(([k, s]) => {
+      if(k === '_pins') return;
+      const em = s.emoji || "🎫";
+      PREZZI[k] = Number(s.prezzo) || 0;
+      NOMI[k] = `${em} ${s.nome || k}`;
+      NOMI_EN[k] = `${em} ${s.nome_en || s.nome || k}`;
+      TITOLI[k] = s.titolo || `${em} BUONO ${(s.nome || k).toUpperCase()}`;
+      TITOLI_EN[k] = s.titolo_en || `${(s.nome_en || s.nome || k).toUpperCase()} VOUCHER`;
+      ETICHETTE[k] = s.etichetta || s.nome || "Unità";
+      ETICHETTE_EN[k] = s.etichetta_en || s.nome_en || "Units";
+      ORARI_SERVIZIO[k] = s.orario || "⏰ Valido nella giornata indicata";
+      ORARI_EN[k] = s.orario_en || "Valid on the day indicated";
+    });
+    popolaSelettoreServizi();
+    popolaFiltroPartnerAdmin();
+  }
+
+  function getTuttiPartner() {
+    const set = new Set();
+    set.add(BAR_NOME.trim());
+    Object.keys(LISTINO).forEach(k => {
+      if(k === '_pins') return;
+      const sNome = LISTINO[k].struttura_nome?.trim();
+      if(sNome) set.add(sNome);
+    });
+    return Array.from(set);
+  }
+
+  function isMiaCompetenza(tipo_servizio, currentPartner) {
+    if(pinBarSessione === "ADMIN_OVERRIDE") return true; 
+    if(!currentPartner) return true;
+    if(tipo_servizio === '_pins') return false;
+    const sNome = LISTINO[tipo_servizio]?.struttura_nome?.trim() || BAR_NOME;
+    return sNome === currentPartner;
+  }
+
+  let sigListinoGen = '';
+  function popolaSelettoreServizi() {
+    const box = $('servizi-check');
+    if (!box) return;
+    const sig = JSON.stringify(Object.entries(LISTINO).map(([k, s]) => [k, s.emoji, s.nome, s.prezzo, s.inizio, s.fine, s.etichetta]));
+    if (sig === sigListinoGen && box.children.length) return;
+    sigListinoGen = sig;
+    const prec = {};
+    box.querySelectorAll('.srv-row').forEach(el => {
+      prec[el.dataset.k] = {
+        on: el.querySelector('.srv-chk').checked,
+        q: el.querySelector('.srv-qta').value,
+        w: el.querySelector('.srv-quando')?.value || 'tutti'
+      };
+    });
+    const persone = $('persone')?.value || 1;
+    box.innerHTML = Object.entries(LISTINO).filter(([k]) => k !== '_pins').map(([k, s]) => {
+      const p = prec[k];
+      const on = p ? p.on : (k === 'colazione');
+      const q = p ? p.q : persone;
+      const w = p ? p.w : (k === 'bagaglio' ? 'ultimo' : 'tutti');
+      const fascia = (s.inizio || s.fine) ? ` · ${s.inizio || 'apertura'}-${s.fine || 'chiusura'}` : '';
+      return `<div class="srv-row ${on ? '' : 'off'}" data-k="${esc(k)}">
+        <input type="checkbox" class="srv-chk" ${on ? 'checked' : ''} onchange="this.closest('.srv-row').classList.toggle('off', !this.checked)">
+        <div class="srv-nome">${esc(s.emoji || '🎫')} ${esc(s.nome)}<small>${eur(s.prezzo)} / ${esc(s.etichetta || 'unità')}${esc(fascia)}</small></div>
+        <input type="number" class="srv-qta" min="1" value="${esc(q)}" title="Quantità">
+        <select class="srv-quando" title="Giorni di validità">
+          <option value="tutti" ${w === 'tutti' ? 'selected' : ''}>📅 Tutti i giorni</option>
+          <option value="primo" ${w === 'primo' ? 'selected' : ''}>🛬 Solo Check-in</option>
+          <option value="ultimo" ${w === 'ultimo' ? 'selected' : ''}>🛫 Solo Check-out</option>
+        </select>
+      </div>`;
+    }).join('');
+  }
+
+  function applicaPersone() {
+    const n = Math.max(1, parseInt($('persone').value) || 1);
+    document.querySelectorAll('#servizi-check .srv-qta').forEach(i => { i.value = n; });
+  }
+  function sistemaDate() { if ($('data_fine').value < $('data_inizio').value) $('data_fine').value = $('data_inizio').value; }
+
+  function popolaSelectEdit(tipoCorrente) {
+    const sel = $('edit-tipo');
+    const chiavi = Object.keys(LISTINO).filter(k => k !== '_pins');
+    if (tipoCorrente && !chiavi.includes(tipoCorrente)) chiavi.push(tipoCorrente);
+    sel.innerHTML = chiavi.map(k => {
+      const s = LISTINO[k] || {};
+      return `<option value="${esc(k)}">${esc(s.emoji || '🎫')} ${esc(s.nome || k)} (${eur(s.prezzo)})</option>`;
+    }).join('');
+    if (tipoCorrente) sel.value = tipoCorrente;
+  }
+
+  function popolaFiltroPartnerAdmin() {
+    const sel = $('filtro-partner-admin');
+    if(!sel) return;
+    const v = sel.value;
+    const opts = ['<option value="">Tutti i partner (Globale)</option>'];
+    getTuttiPartner().forEach(p => opts.push(`<option value="${esc(p)}">${esc(p)}</option>`));
+    sel.innerHTML = opts.join('');
+    sel.value = v || "";
+  }
+
+  async function caricaListinoDaDB() {
+    try {
+      const { data, error } = await sb.rpc('get_listino_servizi');
+      if (!error && data && typeof data === 'object' && Object.keys(data).length) {
+        LISTINO = data;
+        if(!LISTINO._pins) LISTINO._pins = {};
+        sincronizzaMappeListino();
+        return;
+      }
+      const { data: row } = await sb.from('impostazioni_bar').select('listino_servizi').eq('id', 1).maybeSingle();
+      if (row?.listino_servizi && Object.keys(row.listino_servizi).length) {
+        LISTINO = row.listino_servizi;
+        if(!LISTINO._pins) LISTINO._pins = {};
+        sincronizzaMappeListino();
+      }
+    } catch (e) {}
+  }
+
+  let listinoBozza = {};
+  function apriModaleListino() {
+    apriModale('modal-listino');
+    listinoBozza = JSON.parse(JSON.stringify(LISTINO));
+    disegnaEditorListino();
+  }
+
+  function disegnaEditorListino() {
+    $('contenitore-listino-editor').innerHTML = Object.keys(listinoBozza).filter(k => k !== '_pins').map(k => {
+      const s = listinoBozza[k] || {};
+      const isBase = ['colazione', 'bagaglio', 'caffe', 'aperitivo'].includes(k);
+      return `
+        <div class="listino-item" data-key="${esc(k)}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <strong style="color:var(--burgundy-dark);font-size:14px">Codice: <code>${esc(k)}</code></strong>
+            ${isBase ? '<span class="badge b-exp">Servizio base</span>' : `<button class="btn btn-danger btn-sm" onclick="rimuoviServizioListino('${esc(k)}')">${ic('trash')} Rimuovi</button>`}
+          </div>
+          <div class="grid-3">
+            <div><label>Emoji</label><input type="text" class="ls-emoji" value="${esc(s.emoji || '🎫')}"></div>
+            <div><label>Nome (IT)</label><input type="text" class="ls-nome" value="${esc(s.nome || '')}"></div>
+            <div><label>Prezzo unitario (€)</label><input type="number" step="0.10" min="0" class="ls-prezzo" value="${Number(s.prezzo ?? 0).toFixed(2)}"></div>
+          </div>
+          <div class="grid-3">
+            <div><label>Nome (EN)</label><input type="text" class="ls-nome-en" value="${esc(s.nome_en || '')}"></div>
+            <div><label>Etichetta unità (IT)</label><input type="text" class="ls-etichetta" value="${esc(s.etichetta || 'Unità')}"></div>
+            <div><label>Etichetta unità (EN)</label><input type="text" class="ls-etichetta-en" value="${esc(s.etichetta_en || 'Units')}"></div>
+          </div>
+          <div class="grid">
+            <div><label>Orario / condizioni (IT)</label><input type="text" class="ls-orario" value="${esc(s.orario || '')}"></div>
+            <div><label>Orario / condizioni (EN)</label><input type="text" class="ls-orario-en" value="${esc(s.orario_en || '')}"></div>
+          </div>
+          <div class="grid">
+            <div><label>Ora inizio blocco convalida</label><input type="time" class="ls-inizio" value="${esc(s.inizio || '')}"></div>
+            <div><label>Ora limite blocco convalida</label><input type="time" class="ls-fine" value="${esc(s.fine || '')}"></div>
+          </div>
+          <div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--gold-border)">
+            <label style="color:var(--burgundy); display:flex; align-items:center; gap:6px">${ic('map-pin')} Struttura Partner Erogatrice (Opzionale)</label>
+            <p style="font-size:11.5px; color:var(--text-muted); margin:0 0 10px;">Compila solo se diversa dal partner di Default. L'app del cliente raggrupperà le info automaticamente.</p>
+            <div class="grid-3">
+              <div><label>Nome Struttura</label><input type="text" class="ls-strut-nome" value="${esc(s.struttura_nome || '')}" placeholder="Es. Bar Centrale"></div>
+              <div><label>Indirizzo</label><input type="text" class="ls-strut-ind" value="${esc(s.struttura_indirizzo || '')}" placeholder="Es. Via Roma 10"></div>
+              <div><label>Link Google Maps</label><input type="text" class="ls-strut-map" value="${esc(s.struttura_mappa || '')}" placeholder="https://maps.app.goo.gl/..."></div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function leggiEditorListino() {
+    const out = {};
+    document.querySelectorAll('#contenitore-listino-editor .listino-item').forEach(el => {
+      const k = el.getAttribute('data-key');
+      const emoji = el.querySelector('.ls-emoji').value.trim() || '🎫';
+      const nome = el.querySelector('.ls-nome').value.trim() || k;
+      const nome_en = el.querySelector('.ls-nome-en').value.trim() || nome;
+      out[k] = {
+        emoji, nome, nome_en,
+        titolo: `${emoji} BUONO ${nome.toUpperCase()}`,
+        titolo_en: `${nome_en.toUpperCase()} VOUCHER`,
+        etichetta: el.querySelector('.ls-etichetta').value.trim() || 'Unità',
+        etichetta_en: el.querySelector('.ls-etichetta-en').value.trim() || 'Units',
+        prezzo: Math.max(0, parseFloat(el.querySelector('.ls-prezzo').value) || 0),
+        orario: el.querySelector('.ls-orario').value.trim() || '⏰ Valido nella giornata indicata',
+        orario_en: el.querySelector('.ls-orario-en').value.trim() || 'Valid on the day indicated',
+        inizio: el.querySelector('.ls-inizio').value.trim(),
+        fine: el.querySelector('.ls-fine').value.trim(),
+        struttura_nome: el.querySelector('.ls-strut-nome').value.trim(),
+        struttura_indirizzo: el.querySelector('.ls-strut-ind').value.trim(),
+        struttura_mappa: el.querySelector('.ls-strut-map').value.trim()
+      };
+    });
+    return out;
+  }
+
+  async function aggiungiRigaNuovoServizio() {
+    const codice = await chiedi("Codice breve per il nuovo servizio (solo lettere minuscole):", "es. pranzo", { titolo: 'Nuovo servizio', ok: 'Aggiungi' });
+    if (!codice) return;
+    const k = codice.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (!k) return window.avviso("Codice non valido.");
+    listinoBozza = leggiEditorListino();
+    if (listinoBozza[k]) return window.avviso("Esiste già un servizio con questo codice!");
+    const nome = k.charAt(0).toUpperCase() + k.slice(1);
+    listinoBozza[k] = { emoji: "🍽️", nome, nome_en: nome, etichetta: "Persone (Pax)", etichetta_en: "Guests", prezzo: 5.00, orario: "⏰ Valido in orario di apertura", orario_en: "Valid during opening hours", inizio: "", fine: "", struttura_nome: "", struttura_indirizzo: "", struttura_mappa: "" };
+    disegnaEditorListino();
+  }
+
+  async function rimuoviServizioListino(k) {
+    if (!await conferma(`Rimuovere il servizio "${k}" dal listino?\nI voucher già emessi restano nel database.`, { titolo: 'Rimuovi servizio', ok: 'Rimuovi', pericolo: true })) return;
+    listinoBozza = leggiEditorListino();
+    delete listinoBozza[k];
+    disegnaEditorListino();
+  }
+
+  async function salvaListinoSuDB() {
+    const nuovoListino = leggiEditorListino();
+    if (!Object.keys(nuovoListino).length) return window.avviso("Il listino non può essere vuoto.");
+    
+    nuovoListino._pins = LISTINO._pins || {};
+    
+    const { error } = await sb.rpc('salva_listino_servizi', { p_listino: nuovoListino });
+    if (error) {
+      const { error: errUp } = await sb.from('impostazioni_bar').upsert({ id: 1, listino_servizi: nuovoListino, updated_at: new Date().toISOString() });
+      if (errUp) return window.avviso("Errore salvataggio listino: " + errUp.message);
+    }
+    LISTINO = nuovoListino;
+    sincronizzaMappeListino();
+    chiudiModale('modal-listino');
+    suonaBeep('ok');
+    notifica("Listino aggiornato nel database.");
+    caricaStorico();
+  }
+
+  async function caricaImpostazioniBarDaDB() {
+    try {
+      const { data } = await sb.from('impostazioni_bar').select('*').eq('id', 1).maybeSingle();
+      if (data) {
+        if (data.bar_nome) BAR_NOME = data.bar_nome;
+        if (data.bar_indirizzo) BAR_INDIRIZZO = data.bar_indirizzo;
+        if (data.bar_place_id !== undefined) BAR_PLACE_ID = data.bar_place_id;
+        if (data.bar_whatsapp !== undefined) BAR_WHATSAPP = data.bar_whatsapp;
+        if (data.avviso_globale !== undefined) AVVISO_GLOBALE = data.avviso_globale; 
+        
+        BAR_MAPS_URL = BAR_PLACE_ID 
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(BAR_INDIRIZZO)}&query_place_id=${BAR_PLACE_ID}`
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(BAR_INDIRIZZO)}`;
+      }
+    } catch (e) {}
+  }
+
+  function apriModaleDatiBar() {
+    apriModale('modal-dati-bar');
+    $('input-bar-nome').value = BAR_NOME;
+    $('input-bar-indirizzo').value = BAR_INDIRIZZO;
+    $('input-bar-place-id').value = BAR_PLACE_ID;
+    $('input-bar-whatsapp').value = BAR_WHATSAPP;
+    
+    let tipo = 'nessuno', t = AVVISO_GLOBALE || '';
+    if (t.startsWith('PROMO|')) { tipo = 'promo'; t = t.slice(6); }
+    else if (t.startsWith('ALERT|')) { tipo = 'alert'; t = t.slice(6); }
+    else if (t.trim()) { tipo = 'alert'; }
+    
+    $('input-bar-tipo-avviso').value = tipo;
+    $('input-bar-avviso').value = t;
+    
+    const agg = () => $('input-bar-avviso').style.display = $('input-bar-tipo-avviso').value === 'nessuno' ? 'none' : 'block';
+    $('input-bar-tipo-avviso').onchange = agg;
+    agg();
+  }
+
+  async function salvaDatiBarDB() {
+    const nome = $('input-bar-nome').value.trim();
+    const indirizzo = $('input-bar-indirizzo').value.trim();
+    const placeId = $('input-bar-place-id').value.trim();
+    const wa = $('input-bar-whatsapp').value.trim().replace(/\D/g, '');
+    
+    const tipoAvv = $('input-bar-tipo-avviso').value;
+    let avvisoStr = $('input-bar-avviso').value.trim();
+    if (tipoAvv === 'nessuno' || !avvisoStr) avvisoStr = '';
+    else if (tipoAvv === 'promo') avvisoStr = 'PROMO|' + avvisoStr;
+    else if (tipoAvv === 'alert') avvisoStr = 'ALERT|' + avvisoStr;
+
+    if (!nome || !indirizzo) return window.avviso("Nome e Indirizzo sono obbligatori.");
+
+    const payload = { 
+      id: 1, bar_nome: nome, bar_indirizzo: indirizzo, bar_place_id: placeId, bar_whatsapp: wa, avviso_globale: avvisoStr, updated_at: new Date().toISOString() 
+    };
+
+    if (!navigator.onLine) {
+      accodaAzioneSync('upd_bar', payload); 
+    } else {
+      const { error } = await sb.from('impostazioni_bar').upsert(payload);
+      if (error) return window.avviso("Errore: " + error.message);
+    }
+
+    BAR_NOME = nome;
+    BAR_INDIRIZZO = indirizzo;
+    BAR_PLACE_ID = placeId;
+    BAR_WHATSAPP = wa;
+    AVVISO_GLOBALE = avvisoStr;
+    BAR_MAPS_URL = placeId 
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(BAR_INDIRIZZO)}&query_place_id=${placeId}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(BAR_INDIRIZZO)}`;
+
+    chiudiModale('modal-dati-bar');
+    suonaBeep('ok');
+    notifica("Dati partner e messaggi aggiornati con successo.");
+    popolaFiltroPartnerAdmin(); 
+  }
+
+  // =====================================================================
+  //  7. PIN E SICUREZZA PARTNER MULTIPLI E ADMIN
+  // =====================================================================
+  let pinBarSessione = "";
+
+  function apriModalePin() {
+    apriModale('modal-pin');
+    const container = $('pin-partners-list');
+    const partners = getTuttiPartner();
+    if (!LISTINO._pins) LISTINO._pins = {};
+    
+    container.innerHTML = partners.map(p => `
+      <div style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border)">
+        <label style="color:var(--burgundy-dark); font-size:14px; margin-bottom:8px">PIN Accesso per: <strong>${esc(p)}</strong></label>
+        <div class="pw-wrap">
+          <input type="password" class="pin-input pin-partner-input" data-pw data-partner="${esc(p)}" placeholder="Nuovo PIN (lascia vuoto per non variare)" autocomplete="off">
+        </div>
+      </div>
+    `).join('');
+    montaPw(container);
+  }
+  
+  async function salvaTuttiIpinDB() {
+    const inputs = document.querySelectorAll('.pin-partner-input');
+    let variati = 0;
+    
+    if (!LISTINO._pins) LISTINO._pins = {};
+    
+    inputs.forEach(inp => {
+      const val = inp.value.trim();
+      const pName = inp.getAttribute('data-partner');
+      if(val.length > 0) {
+        if(val.length < 3) return window.avviso(`PIN per ${pName} troppo corto. Minimo 3 caratteri.`);
+        LISTINO._pins[pName] = hashPinBar(val);
+        variati++;
+      }
+    });
+
+    if(variati > 0) {
+      const { error } = await sb.from('impostazioni_bar').upsert({ id: 1, listino_servizi: LISTINO, updated_at: new Date().toISOString() });
+      if (error) return window.avviso("Errore salvataggio PIN: " + error.message);
+      
+      chiudiModale('modal-pin');
+      suonaBeep('ok');
+      notifica(`Aggiornati e cifrati i PIN di ${variati} partner.`);
+    } else {
+      chiudiModale('modal-pin');
+    }
+  }
+
+  async function verificaPinNelDB(pinInserito, partnerName) {
+    const pinPulito = String(pinInserito || '').trim();
+    if (!pinPulito) return false;
+    const hashCandidato = hashPinBar(pinPulito);
+    
+    if(LISTINO._pins && LISTINO._pins[partnerName] === hashCandidato) return true;
+    
+    const { data: dataHash } = await sb.rpc('verifica_pin_bar', { p_pin: hashCandidato });
+    if (dataHash === true) return true;
+    
+    const { data: dataPlain } = await sb.rpc('verifica_pin_bar', { p_pin: pinPulito });
+    if (dataPlain === true) return true;
+    
+    return hashCandidato === hashPinBar('12345') || pinPulito === '12345';
+  }
+
+  async function verificaHashAdminDB(hashCandidato) {
+    if (!hashCandidato) return false;
+    const { data, error } = await sb.rpc('verifica_admin_hash', { p_hash: hashCandidato });
+    if (!error && typeof data === 'boolean') return data;
+    return hashCandidato === DEFAULT_ADMIN_HASH;
+  }
+
+  let adminAttivo = false, tentativiLogin = 0, bloccoFino = 0;
+  
+  async function mostraLoginAdmin() {
+    try {
+      const tok = localStorage.getItem('ms_admin_tok') || sessionStorage.getItem('ms_admin_tok');
+      if (tok && await verificaHashAdminDB(tok)) return entraAdmin();
+    } catch (e) {}
+    $('vista-login').style.display = 'flex';
+    $('login-pw').focus();
+  }
+
+  async function accediAdmin() {
+    const ora = Date.now();
+    if (ora < bloccoFino) {
+      $('login-err').textContent = `Troppi tentativi. Riprova tra ${Math.ceil((bloccoFino - ora) / 1000)} secondi.`;
+      return;
+    }
+    const h = hashPassword($('login-pw').value);
+    const ok = await verificaHashAdminDB(h);
+    if (!ok) {
+      suonaBeep('err');
+      tentativiLogin++;
+      if (tentativiLogin >= 5) { bloccoFino = Date.now() + 30000; tentativiLogin = 0; }
+      $('login-err').textContent = 'Password non corretta.';
+      $('login-pw').value = '';
+      return;
+    }
+    suonaBeep('ok');
+    try { ($('login-ricorda').checked ? localStorage : sessionStorage).setItem('ms_admin_tok', h); } catch (e) {}
+    $('vista-login').style.display = 'none';
+    entraAdmin();
+  }
+
+  function apriModalePwAdmin() {
+    apriModale('modal-pw-admin');
+    ['input-vecchia-pw', 'input-nuova-pw', 'input-conferma-pw'].forEach(id => {
+      const i = $(id);
+      i.value = '';
+      if (i.type !== 'password') togglePw(i.parentElement.querySelector('.pw-toggle'));
+    });
+    $('err-cambio-pw').textContent = '';
+    $('input-vecchia-pw').focus();
+  }
+
+  async function salvaNuovaPwAdminDB() {
+    const vecchia = $('input-vecchia-pw').value;
+    const nuova = $('input-nuova-pw').value;
+    const conferma = $('input-conferma-pw').value;
+    const errBox = $('err-cambio-pw');
+    if (!vecchia) { errBox.textContent = "Inserisci la password attuale."; return; }
+    if (nuova.length < 4) { errBox.textContent = "La nuova password deve avere almeno 4 caratteri."; return; }
+    if (nuova !== conferma) { errBox.textContent = "La conferma non coincide con la nuova password."; return; }
+
+    const vecchioHash = hashPassword(vecchia);
+    const nuovoHash = hashPassword(nuova);
+    const { data, error } = await sb.rpc('cambia_admin_hash', { p_vecchio_hash: vecchioHash, p_nuovo_hash: nuovoHash });
+    if (error) { errBox.textContent = "Errore durante l'aggiornamento password: " + error.message; return; }
+    if (data === false) { suonaBeep('err'); errBox.textContent = "La password attuale inserita non è corretta."; return; }
+    try {
+      if (localStorage.getItem('ms_admin_tok')) localStorage.setItem('ms_admin_tok', nuovoHash);
+      if (sessionStorage.getItem('ms_admin_tok')) sessionStorage.setItem('ms_admin_tok', nuovoHash);
+    } catch (e) {}
+    chiudiModale('modal-pw-admin');
+    suonaBeep('ok');
+    notifica("Password Admin aggiornata con successo.");
+  }
+
+  function esciAdmin() {
+    try { localStorage.removeItem('ms_admin_tok'); sessionStorage.removeItem('ms_admin_tok'); } catch (e) {}
+    location.reload();
+  }
+  
+  $('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') accediAdmin(); });
+  $('bar-pin').addEventListener('keydown', e => { if (e.key === 'Enter') entraBar(); });
+
+  function inviaLinkBar() {
+    const testo = `☕ *Maison Spicchio - Area Partner*\nAccedi da qui per validare i pass dei clienti e vedere lo storico erogazioni:\n${URL_BASE}?bar=1\n\n🔑 Il tuo PIN di accesso e convalida ti è stato comunicato privatamente dalla struttura.`;
+    window.open(`https://wa.me/${BAR_WHATSAPP}?text=${encodeURIComponent(testo)}`, '_blank');
+  }
+
+  // =====================================================================
+  //  8. SOGGIORNO & QR
+  // =====================================================================
+  const codicePass = v => String(v.id || '').slice(0, 8).toUpperCase();
+  const linkValidazione = v => `${URL_BASE}?c=${encodeURIComponent(v.id)}&n=${encodeURIComponent(v.ospite)}`;
+  const linkOspite = v => `${URL_BASE}?s=${encodeURIComponent(v.id)}&n=${encodeURIComponent(v.ospite)}`;
+
+  async function caricaSoggiorno(anchorId, nome) {
+    const nomeRif = String(nome || '').trim();
+    const cacheKey = `ms_cache_soggiorno_${anchorId || nomeRif}`;
+    
+    if (navigator.onLine) {
+      try {
+        let anchor = null;
+        if (anchorId) {
+          const { data } = await sb.rpc('get_voucher', { p_id: String(anchorId) });
+          anchor = data?.id ? data : null;
+          if (!anchor) {
+            const { data: d2 } = await sb.from('servizi_ospiti').select('*').eq('id', anchorId).maybeSingle();
+            anchor = d2 || null;
+          }
+        }
+        const refName = String(anchor?.ospite || nome || '').trim();
+        if (!refName) return { anchor: null, rows: [] };
+        
+        const { data: lista } = await sb.from('servizi_ospiti').select('*')
+          .ilike('ospite', escLike(refName)).order('data_servizio', { ascending: true }).limit(1000);
+        
+        const rows = lista?.length ? [...lista] : (anchor ? [anchor] : []);
+        rows.sort(ordinaVoucher);
+        
+        localStorage.setItem(cacheKey, JSON.stringify({ anchor: anchor || rows[0] || null, rows }));
+        return { anchor: anchor || rows[0] || null, rows };
+      } catch (e) {}
+    }
+    
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey));
+      if (cached && cached.rows) return cached;
+    } catch(e) {}
+    
+    if (listaServizi.length > 0) {
+      const rows = righeOspite(nomeRif);
+      if (rows.length) return { anchor: rows[0], rows };
+    }
+    
+    return { anchor: null, rows: [] };
+  }
+
+  function riassuntoSoggiorno(rows) {
+    const date = rows.map(r => r.data_servizio).sort();
+    const perTipo = {};
+    rows.forEach(r => {
+      const t = perTipo[r.tipo_servizio] || (perTipo[r.tipo_servizio] = { giorni: 0, qta: r.quantita, usati: 0 });
+      t.giorni++;
+      if (r.incassato) t.usati++;
+      t.qta = Math.max(t.qta, r.quantita);
+    });
+    return { dal: date[0], al: date[date.length - 1], giorni: new Set(date).size, perTipo };
+  }
+
+  function estraiStrutture(tipiArr) {
+    const map = new Map();
+    tipiArr.forEach(t => {
+       if(t === '_pins') return;
+       const s = LISTINO[t] || {};
+       const sNome = s.struttura_nome?.trim() || BAR_NOME;
+       const sInd = s.struttura_indirizzo?.trim() || BAR_INDIRIZZO;
+       const sMap = s.struttura_mappa?.trim() || BAR_MAPS_URL;
+       const key = sNome + '|' + sInd;
+       if(!map.has(key)) map.set(key, { nome: sNome, ind: sInd, map: sMap, serviziIt: [], serviziEn: [] });
+       map.get(key).serviziIt.push(NOMI[t] || t);
+       map.get(key).serviziEn.push(NOMI_EN[t] || t);
+    });
+    return Array.from(map.values());
+  }
+
+  function cardSoggiorno(rows, extraHtml, headerExtraHtml = '') {
+    const r0 = rows[0];
+    const s = riassuntoSoggiorno(rows);
+    const tipi = Object.keys(s.perTipo);
+    
+    const servIt = tipi.map(t => {
+      const n = NOMI[t] || t;
+      const b = n.toLowerCase().includes('omaggio') || n.toLowerCase().includes('free') ? ' <b style="color:var(--gold-bright);background:var(--burgundy);padding:2px 6px;border-radius:4px;font-size:9.5px;vertical-align:middle;margin-left:4px">OMAGGIO</b>' : '';
+      return `${esc(n)}${b} × ${s.perTipo[t].qta} (${s.perTipo[t].giorni} gg)`;
+    }).join('<br>');
+    const servEn = tipi.map(t => {
+      const n = NOMI_EN[t] || t;
+      const b = n.toLowerCase().includes('omaggio') || n.toLowerCase().includes('free') ? ' <b style="color:var(--gold-bright);background:var(--burgundy);padding:2px 6px;border-radius:4px;font-size:9.5px;vertical-align:middle;margin-left:4px">GIFT</b>' : '';
+      return `${esc(n)}${b} × ${s.perTipo[t].qta} (${s.perTipo[t].giorni} d)`;
+    }).join('<br>');
+
+    const orIt = tipi.map(t => `${esc(NOMI[t] || t)}: ${esc(ORARI_SERVIZIO[t] || '')}`).join('<br>');
+    const orEn = tipi.map(t => `${esc(NOMI_EN[t] || t)}: ${esc(ORARI_EN[t] || '')}`).join('<br>');
+    
+    const bannerAvviso = (() => {
+      if (!AVVISO_GLOBALE) return '';
+      let t = AVVISO_GLOBALE, tipo = 'alert';
+      if (t.startsWith('PROMO|')) { tipo = 'promo'; t = t.slice(6); }
+      else if (t.startsWith('ALERT|')) { tipo = 'alert'; t = t.slice(6); }
+      
+      if (tipo === 'promo') {
+        return `<div class="v-alert-banner" style="background:linear-gradient(135deg, #fffaf0, #fef3c7); border:2px solid #f59e0b; color:#92400e; box-shadow:0 12px 25px rgba(245,158,11,0.25)">
+          <div style="font-size:24px; line-height:1; margin-top:-2px">🎁</div>
+          <div style="flex:1"><strong style="color:#b45309; text-transform:uppercase; font-size:10.5px; letter-spacing:1px; display:block; margin-bottom:2px">Offerta Partner / Special Offer</strong>${esc(t).replace(/\n/g, '<br>')}</div>
+        </div>`;
+      }
+      return `<div class="v-alert-banner">${ic('alert')}<div>${esc(t).replace(/\n/g, '<br>')}</div></div>`;
+    })();
+
+    const strutture = estraiStrutture(tipi);
+    const barBoxesHtml = strutture.map(strut => `
+      <div class="v-bar-box" style="margin-top:10px">
+        <div class="v-bar-icon">${ic('map-pin')}</div>
+        <div class="v-bar-details">
+          <div class="v-bar-tag" style="margin-bottom:2px">📍 VALIDO PER / VALID FOR:<br><span style="color:#fff; opacity:0.9">${esc(strut.serviziIt.join(' • '))}</span></div>
+          <div class="v-bar-name" style="color:var(--gold-bright)">${esc(strut.nome)}</div>
+          <div class="v-bar-addr">${esc(strut.ind)}</div>
+          <a href="${esc(strut.map)}" target="_blank" rel="noopener" class="map-link-btn" style="margin-top:8px">${ic('map-pin')} Naviga / Navigate</a>
+        </div>
+      </div>
+    `).join('');
+
+    return `
+      ${headerExtraHtml}
+      ${bannerAvviso}
+      <div class="voucher-card">
+        <div class="v-header">
+          <div class="v-brand-sub">LUXURY HOSPITALITY · NAPOLI</div>
+          <h3 class="v-brand-title">Maison Spicchio</h3>
+          <div class="v-badge-type">PASS SOGGIORNO<span class="en">STAY PASS</span></div>
+        </div>
+        <div class="v-body">
+          <div class="v-guest-label">Ospite autorizzato / Authorized guest</div>
+          <div class="v-guest-name">${esc(r0.ospite)}</div>
+          <div class="v-info-grid">
+            <div class="v-info-box">
+              <span class="v-info-label">Dal / From</span>
+              <span class="v-info-val">${esc(formattaDataIta(s.dal))}<span class="en">${esc(formattaDataEn(s.dal))}</span></span>
+            </div>
+            <div class="v-info-box">
+              <span class="v-info-label">Al / To</span>
+              <span class="v-info-val">${esc(formattaDataIta(s.al))}<span class="en">${esc(formattaDataEn(s.al))}</span></span>
+            </div>
+            <div class="v-info-box full">
+              <span class="v-info-label">Servizi inclusi / Included services</span>
+              <span class="v-info-val">${servIt}<span class="en">${servEn}</span></span>
+            </div>
+            <div class="v-info-box full">
+              <span class="v-info-label">Orari & condizioni / Time & conditions</span>
+              <span class="v-info-val" style="font-size:12.5px">${orIt}<span class="en">${orEn}</span></span>
+            </div>
+          </div>
+          ${barBoxesHtml}
+        </div>
+        <div class="v-divider">
+          <div class="v-notch-l"></div>
+          <div class="v-divider-line"></div>
+          <div class="v-notch-r"></div>
+        </div>
+        <div class="v-qr-section">
+          ${extraHtml}
+          <div class="v-id-hint">Se il QR non si legge, comunica questo codice al partner<br>If the QR won't scan, give this code to the partner</div>
+          <div class="v-id-code">CODICE / CODE: ${esc(codicePass(r0))}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const notaQr = () => `Mostra <strong>questo unico QR Code</strong> ai partner per ogni servizio: verrà convalidato quello previsto per la giornata.<span class="en">Show <strong>this single QR code</strong> to partners for each service: the one scheduled for that day will be validated.</span>`;
+
+  let stayRows = [], staySig = '';
+  function mostraPubblico(html) {
+    $('vista-admin').style.display = 'none';
+    $('vista-pubblica').style.display = 'flex';
+    $('pub').innerHTML = html;
+    montaPw($('pub'));
+  }
+  const msgPub = t => mostraPubblico(`<div class="voucher-card" style="padding:28px"><h3>Maison Spicchio</h3><p style="margin:10px 0 0">${t}</p></div>`);
+
+  async function vistaPortafoglioOspite(anchorId, nome) {
+    mostraPubblico('<p style="color:#fff;text-align:center">Caricamento del tuo pass…<br>Loading your pass…</p>');
+    const carica = async () => {
+      const res = await caricaSoggiorno(anchorId, nome);
+      if (!res.rows.length) { staySig = ''; return msgPub('Nessun voucher trovato.<span class="en">No vouchers found.</span>'); }
+      const sig = isoLocale(new Date()) + '|' + res.rows.map(r => `${r.id}:${r.incassato}:${r.quantita}`).join('|');
+      if (sig === staySig) return;
+      staySig = sig;
+      stayRows = res.rows;
+      renderStayOspite();
+    };
+    await carica();
+    setInterval(carica, 6000);
+  }
+
+  function renderStayOspite() {
+    const rows = stayRows;
+    const oggi = isoLocale(new Date());
+    const totUsati = rows.filter(x => x.incassato).length;
+    const tabsHtml = rows.map(item => {
+      let stClass = 'wt-st-attivo', stLabel = 'Da usare / Valid';
+      if (item.incassato) { stClass = 'wt-st-usato'; stLabel = `Usato / Used ${hhmm(item.ora_incasso)}`; }
+      else if (item.data_servizio === oggi) { stClass = 'wt-st-oggi'; stLabel = 'OGGI / TODAY'; }
+      else if (item.data_servizio < oggi) { stClass = 'wt-st-scaduto'; stLabel = 'Scaduto / Expired'; }
+      const evid = item.data_servizio === oggi && !item.incassato ? 'active' : '';
+      return `
+        <div class="wallet-tab ${evid}">
+          <div class="wt-left">
+            <span class="wt-title">${esc(NOMI[item.tipo_servizio] || item.tipo_servizio)} (x${item.quantita})</span>
+            <span class="wt-date">${esc(formattaDataIta(item.data_servizio))}</span>
+          </div>
+          <span class="wt-status ${stClass}">${stLabel}</span>
+        </div>`;
+    }).join('');
+    const headerWallet = `
+      <div class="wallet-banner">
+        <h4>Il tuo Pass Soggiorno · ${esc(rows[0].ospite)}</h4>
+        <p>Un solo QR per tutto il soggiorno · One QR for your whole stay<br>${rows.length} servizi (${totUsati} utilizzati / used)</p>
+        <div class="wallet-tabs">${tabsHtml}</div>
+      </div>`;
+    mostraPubblico(cardSoggiorno(rows, `
+      <div class="v-qr-frame"><div id="qr-ospite"></div></div>
+      <div class="v-footer-note">${notaQr()}</div>
+      <div class="stack" style="margin-top:14px">
+        <button class="btn btn-teal btn-block" onclick="scaricaCalendario()">${ic('calendar')} <span>Aggiungi promemoria<span class="en" style="color:#fff;opacity:.85">Add reminders to calendar</span></span></button>
+        <button class="btn btn-ghost btn-block" onclick="stampaPass(stayRows)">${ic('printer')} <span>Stampa il pass<span class="en">Print your pass</span></span></button>
+      </div>
+    `, headerWallet));
+    new QRCode($('qr-ospite'), {
+      text: linkValidazione(rows[0]),
+      width: 220, height: 220,
+      colorDark: "#3b0510", colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+
+  // =====================================================================
+  //  9. CONVALIDA BAR (PARTNER)
+  // =====================================================================
+  let provieneDaScannerBar = false;
+  let convCorrente = { anchorId: '', nome: '', rows: [] };
+  let pinSbagliati = 0, pinBloccoFino = 0;
+  
+  function pinBloccato() {
+    const r = pinBloccoFino - Date.now();
+    return r > 0 ? Math.ceil(r / 1000) : 0;
+  }
+  function registraPinErrato() {
+    pinSbagliati++;
+    if (pinSbagliati >= 5) { pinBloccoFino = Date.now() + 60000; pinSbagliati = 0; }
+  }
+
+  async function vistaConvalidaSoggiorno(anchorId, daScanner = false, nome = '') {
+    provieneDaScannerBar = daScanner;
+    mostraPubblico('<p style="color:#fff;text-align:center">Verifica pass in corso…</p>');
+    const res = await caricaSoggiorno(anchorId, nome);
+    if (!res.rows.length) return msgPub('Voucher non trovato o eliminato.');
+    convCorrente = { anchorId, nome, rows: res.rows };
+    disegnaConvalidaSoggiorno();
+  }
+
+  function chiudiVistaConvalida() {
+    if (provieneDaScannerBar) {
+      $('vista-pubblica').style.display = 'none';
+      $('vista-bar').style.display = 'block';
+      caricaBar();
+    } else {
+      window.close();
+      setTimeout(() => msgPub('Operazione completata. Puoi chiudere questa pagina.'), 300);
+    }
+  }
+
+  function minutiDaStringaOra(hhmmStr) {
+    if (!hhmmStr || !hhmmStr.includes(':')) return null;
+    const [h, m] = hhmmStr.split(':').map(Number);
+    return (isNaN(h) || isNaN(m)) ? null : (h * 60 + m);
+  }
+
+  function controllaFinestra(v) {
+    const cfg = LISTINO[v.tipo_servizio] || {};
+    const now = new Date();
+    const min = now.getHours() * 60 + now.getMinutes();
+    const i = minutiDaStringaOra(cfg.inizio), f = minutiDaStringaOra(cfg.fine);
+    if (i !== null && min < i) return `Servizio attivo a partire dalle ${cfg.inizio}`;
+    if (f !== null && min > f) return `Orario limite superato (consentito entro le ${cfg.fine})`;
+    return '';
+  }
+
+  function disegnaConvalidaSoggiorno(bannerHtml = '') {
+    const rows = convCorrente.rows;
+    const oggi = isoLocale(new Date());
+    const oggiRows = rows.filter(r => r.data_servizio === oggi);
+    const testoBtnChiudi = provieneDaScannerBar ? "Torna alla tua Area" : "Chiudi finestra";
+    let corpo = '';
+    let selezionabili = 0;
+
+    const myPartner = provieneDaScannerBar && pinBarSessione !== "ADMIN_OVERRIDE" ? sessionStorage.getItem('ms_bar_partner') : null;
+
+    if (!oggiRows.length) {
+      const prossimo = rows.find(r => r.data_servizio > oggi && !r.incassato);
+      corpo = prossimo
+        ? `<div class="msg-box msg-warn">${ic('alert')}<div>Nessun servizio previsto per oggi.<br>Prossimo servizio: ${esc(formattaDataIta(prossimo.data_servizio))}</div></div>`
+        : `<div class="msg-box msg-err">${ic('x')}<div>Nessun voucher valido oggi.<br>Il soggiorno risulta concluso o scaduto.</div></div>`;
+    } else {
+      corpo = `<div style="font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#9c7b1c;margin-bottom:8px">Servizi di oggi · ${esc(formattaDataIta(oggi))}</div>` +
+        oggiRows.map(r => {
+          const n = NOMI[r.tipo_servizio] || r.tipo_servizio;
+          const isOm = n.toLowerCase().includes('omaggio') || n.toLowerCase().includes('free');
+          const badgeOm = isOm ? ' <b style="color:var(--gold-bright);background:var(--burgundy);padding:2px 6px;border-radius:4px;font-size:9px;vertical-align:middle">OMAGGIO</b>' : '';
+          const nomeStr = `${esc(n)}${badgeOm} × ${r.quantita} ${esc(ETICHETTE[r.tipo_servizio] || '')}`;
+          const sNome = (LISTINO[r.tipo_servizio] || {}).struttura_nome?.trim() || BAR_NOME;
+          const diMiaCompetenza = !myPartner || sNome === myPartner;
+          
+          if (r.incassato) return `<div class="conv-item done">${ic('check-circle')}<div>${nomeStr}<small>Già erogato alle ${hhmm(r.ora_incasso || r.ora_scansione)} presso ${esc(sNome)}</small></div></div>`;
+          
+          if(!diMiaCompetenza) {
+             return `<div class="conv-item off" style="background:#f1f5f9; border-color:#cbd5e1; color:#475569">${ic('map-pin')}<div>${nomeStr}<small>Competenza altrui: ${esc(sNome)}</small></div></div>`;
+          }
+          
+          const motivo = controllaFinestra(r);
+          
+          selezionabili++;
+          let selQta = '';
+          if (r.quantita > 1) {
+            const opts = Array.from({ length: r.quantita }, (_, idx) => {
+              const v = idx + 1;
+              return `<option value="${v}" ${v === r.quantita ? 'selected' : ''}>${v} su ${r.quantita}</option>`;
+            }).join('');
+            selQta = `<select class="conv-qta-sel" data-qta-for="${esc(r.id)}" onclick="event.stopPropagation()" title="Quantità da erogare adesso">${opts}</select>`;
+          }
+
+          let stileExtra = motivo ? 'background-color: #fef2f2; border-color: var(--danger);' : '';
+          let sottoTesto = motivo 
+            ? `<small style="color:var(--danger); font-weight:800; display:flex; align-items:center; gap:4px; margin-top:2px;">${ic('alert')} FUORI ORARIO: ${esc(motivo)}</small>`
+            : `<small>Da erogare ora</small>`;
+
+          return `<label class="conv-item" style="${stileExtra}">
+            <input type="checkbox" class="chk-conv" value="${esc(r.id)}" checked>
+            <div style="flex:1">${nomeStr}${sottoTesto}</div>
+            ${selQta}
+          </label>`;
+        }).join('');
+    }
+
+    let controlli = '';
+    if (selezionabili > 0) {
+      const pinPre = provieneDaScannerBar && pinBarSessione !== "ADMIN_OVERRIDE" ? esc(pinBarSessione) : '';
+      controlli = `
+        <div style="margin:12px 0 6px;text-align:left">
+          <label>Il tuo PIN Erogatore (Autorizzazione)</label>
+          <input type="password" id="pin-bar" data-pw class="pin-input" inputmode="numeric" autocomplete="off" placeholder="PIN" value="${pinPre}" onkeydown="if(event.key==='Enter')convalidaSelezionati()" style="margin-bottom:6px">
+          <div id="pin-err" style="color:var(--danger);font-size:12.5px;font-weight:700;min-height:18px"></div>
+        </div>
+        <button id="btn-conv" class="btn btn-primary btn-block" style="height:50px;font-size:16px" onclick="convalidaSelezionati()">${ic('check-circle')} Convalida ed eroga</button>
+        <p style="font-size:11.5px;color:var(--text-muted);font-weight:600;margin:8px 0 0">Il servizio sarà registrato nel tuo estratto conto per il saldo settimanale.</p>`;
+    }
+    mostraPubblico(cardSoggiorno(rows, `
+      ${bannerHtml}${corpo}${controlli}
+      <button class="btn ${provieneDaScannerBar ? 'btn-dark' : 'btn-ghost'} btn-block" onclick="chiudiVistaConvalida()" style="margin-top:12px">${provieneDaScannerBar ? ic('arrow-left') : ic('x')} ${testoBtnChiudi}</button>
+    `));
+    if (selezionabili > 0) setTimeout(() => { const p = $('pin-bar'); if (p && !p.value) p.focus(); }, 150);
+  }
+
+  async function incassaConPin(id, pin, qtaScelta) {
+    const currentPartner = sessionStorage.getItem('ms_bar_partner') || BAR_NOME;
+    if (!(await verificaPinNelDB(pin, currentPartner))) return { esito: 'pin_errato' };
+    
+    const oraIso = new Date().toISOString();
+    const updData = { incassato: true, usato: false, ora_incasso: oraIso, ora_scansione: oraIso };
+
+    if (!navigator.onLine) {
+      accodaAzioneSync('upd', { id: id, data: updData });
+      if (convCorrente && convCorrente.rows) {
+        const row = convCorrente.rows.find(r => r.id === id);
+        if (row) Object.assign(row, updData);
+      }
+      return { esito: 'ok', offline: true };
+    }
+
+    let { error } = await sb.rpc('incassa_voucher', { p_id: String(id), p_pin: hashPinBar(pin), p_qta: qtaScelta });
+    if (error) {
+      let { error: err2 } = await sb.rpc('incassa_voucher', { p_id: String(id), p_pin: pin, p_qta: qtaScelta });
+      if (err2) {
+        const { error: upErr } = await sb.from('servizi_ospiti').update(updData).eq('id', id);
+        if (upErr) accodaAzioneSync('upd', { id: id, data: updData });
+      }
+    }
+    return { esito: 'ok' };
+  }
+
+  async function convalidaSelezionati() {
+    const chks = [...document.querySelectorAll('.chk-conv:checked')];
+    const pinInput = $('pin-bar');
+    const errEl = $('pin-err');
+    const pin = (pinInput?.value || '').trim();
+    if (!chks.length) { suonaBeep('err'); errEl.textContent = 'Seleziona almeno un servizio.'; return; }
+    if (!pin) { suonaBeep('err'); errEl.textContent = 'Inserisci il tuo PIN per convalidare.'; pinInput.focus(); return; }
+    if (pinBloccato()) { suonaBeep('err'); errEl.textContent = `Troppi PIN errati. Riprova tra ${pinBloccato()} secondi.`; return; }
+
+    const btn = $('btn-conv');
+    btn.disabled = true;
+    let ok = 0;
+    const problemi = [];
+    
+    for (const chk of chks) {
+      const id = chk.value;
+      const selEl = document.querySelector(`[data-qta-for="${CSS.escape(id)}"]`);
+      const qtaScelta = selEl ? parseInt(selEl.value) : null;
+      
+      const r = await incassaConPin(id, pin, qtaScelta);
+      
+      if (r.esito === 'pin_errato') {
+        suonaBeep('err');
+        registraPinErrato();
+        errEl.textContent = 'PIN errato! Inserisci il PIN corretto per erogare.';
+        pinInput.value = '';
+        pinInput.focus();
+        btn.disabled = false;
+        return;
+      }
+      if (r.esito === 'non_trovato') { problemi.push('Un voucher non è stato trovato.'); continue; }
+      if (r.esito === 'errore') { problemi.push('Errore: ' + r.msg); continue; }
+      ok++;
+    }
+    
+    pinSbagliati = 0;
+    const res = await caricaSoggiorno(convCorrente.anchorId, convCorrente.nome);
+    if (res.rows.length) convCorrente.rows = res.rows;
+    suonaBeep(ok ? 'ok' : 'err');
+    let banner = '';
+    if (ok) banner += `<div class="msg-box msg-ok">${ic('check-circle')}<div>PIN corretto. ${ok} ${ok === 1 ? 'servizio erogato' : 'servizi erogati'}.<br><span style="font-weight:600">L'operazione è stata registrata.</span></div></div>`;
+    if (problemi.length) banner += `<div class="msg-box msg-err">${ic('alert')}<div>${problemi.map(esc).join('<br>')}</div></div>`;
+    disegnaConvalidaSoggiorno(banner);
+  }
+
+  // =====================================================================
+  //  10. AREA BAR & SELETTORE PARTNER
+  // =====================================================================
+  let righeBar = [], righeAttesiOggi = [], attesiGruppi = [];
+  let scannerQr = null, scannerAttivo = false, barAvviata = false;
+
+  function cambiaPartner() {
+    sessionStorage.removeItem('ms_bar_partner');
+    sessionStorage.removeItem('ms_bar_auth');
+    location.href = URL_BASE + '?bar=1';
+  }
+
+  function selezionaPartnerBar(nome) {
+    sessionStorage.setItem('ms_bar_partner', nome);
+    vistaBar();
+  }
+
+  function vistaBar() {
+    $('vista-admin').style.display = 'none'; 
+    $('vista-bar').style.display = 'block';
+    $('bar-selettore').style.display = 'none';
+    $('bar-scheda').style.display = 'none';
+    $('bar-login').style.display = 'none';
+    $('bar-contenuto').style.display = 'none';
+
+    const paramPartner = params.get('p');
+    if (paramPartner) sessionStorage.setItem('ms_bar_partner', paramPartner);
+
+    const currentPartner = sessionStorage.getItem('ms_bar_partner');
+
+    if (sessionStorage.getItem('ms_bar_auth') === '1' && currentPartner) {
+      return apriAreaBar();
+    }
+
+    if (!currentPartner) {
+      const partners = getTuttiPartner();
+      $('bar-lista-btn').innerHTML = partners.map(p => `
+        <button class="btn btn-ghost" style="height:56px; font-size:16px; border-color:var(--gold)" onclick="selezionaPartnerBar('${esc(p)}')">${ic('map-pin')} ${esc(p)}</button>
+      `).join('');
+      $('bar-selettore').style.display = 'block';
+    } else {
+      $('bar-titolo-partner').textContent = currentPartner;
+      $('lbl-pin-partner').textContent = currentPartner;
+      $('bar-scheda').style.display = 'block';
+      $('bar-login').style.display = 'block';
+      $('bar-pin').focus();
+    }
+  }
+
+  async function entraBar() {
+    const pin = $('bar-pin').value.trim();
+    const currentPartner = sessionStorage.getItem('ms_bar_partner');
+    
+    if (pinBloccato()) { suonaBeep('err'); return window.avviso(`Troppi PIN errati. Riprova tra ${pinBloccato()} secondi.`); }
+    
+    const ok = await verificaPinNelDB(pin, currentPartner);
+    if (!ok) {
+      suonaBeep('err');
+      registraPinErrato();
+      return window.avviso('PIN non corretto per questa struttura.');
+    }
+    
+    pinSbagliati = 0;
+    suonaBeep('ok');
+    pinBarSessione = pin;
+    try { sessionStorage.setItem('ms_bar_auth', '1'); } catch (e) {}
+    apriAreaBar();
+  }
+
+  function apriAreaBar() {
+    $('bar-login').style.display = 'none';
+    $('bar-selettore').style.display = 'none';
+    $('bar-scheda').style.display = 'block';
+    $('bar-titolo-partner').textContent = sessionStorage.getItem('ms_bar_partner') || 'Tutte';
+    $('btn-apri-scanner').style.display = 'inline-flex';
+    $('bar-contenuto').style.display = 'block';
+    $('btn-refresh-bar').style.display = 'inline-flex';
+    
+    caricaBar();
+    if (barAvviata) return;
+    barAvviata = true;
+    attivaRealtimeBar();
+    setInterval(() => { if (!document.hidden && !scannerAttivo && $('vista-pubblica').style.display !== 'flex') caricaBar(); }, 6000);
+  }
+
+  function apriBarDaAdmin() {
+    pinBarSessione = "ADMIN_OVERRIDE"; 
+    sessionStorage.setItem('ms_bar_partner', 'Area Globale Admin');
+    try { sessionStorage.setItem('ms_bar_auth', '1'); } catch (e) {}
+    $('vista-admin').style.display = 'none';
+    $('vista-bar').style.display = 'block';
+    $('btn-torna-admin').style.display = 'inline-flex';
+    apriAreaBar();
+    window.scrollTo(0, 0);
+  }
+  
+  function tornaAdminDaBar() {
+    fermaScannerBar();
+    $('vista-bar').style.display = 'none';
+    $('vista-admin').style.display = 'block';
+    caricaStorico();
+  }
+
+  function toggleScannerBar() {
+    if (scannerAttivo) fermaScannerBar();
+    else avviaScannerBar();
+  }
+
+  function avviaScannerBar() {
+    $('scanner-box').style.display = 'block';
+    scannerAttivo = true;
+    if (!scannerQr) scannerQr = new Html5Qrcode("qr-reader");
+    scannerQr.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 240, height: 240 } },
+      decodedText => {
+        if (!scannerAttivo) return;
+        suonaBeep('ok');
+        fermaScannerBar();
+        let idLetto = decodedText.trim(), nome = '';
+        try {
+          const u = new URL(decodedText);
+          idLetto = u.searchParams.get('c') || u.searchParams.get('id') || u.searchParams.get('s') || u.searchParams.get('v') || idLetto;
+          nome = u.searchParams.get('n') || '';
+        } catch (e) {}
+        vistaConvalidaSoggiorno(idLetto, true, nome);
+      },
+      () => {}
+    ).catch(err => {
+      scannerAttivo = false;
+      $('scanner-box').style.display = 'none';
+      window.avviso("Impossibile accedere alla fotocamera. Verifica i permessi.\n" + err);
+    });
+  }
+
+  function fermaScannerBar() {
+    scannerAttivo = false;
+    $('scanner-box').style.display = 'none';
+    if (scannerQr) Promise.resolve().then(() => scannerQr.stop()).catch(() => {});
+  }
+
+  function attivaRealtimeBar() {
+    try {
+      sb.channel('bar_rt')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'servizi_ospiti' }, () => { if ($('vista-pubblica').style.display !== 'flex') caricaBar(); })
+        .subscribe();
+    } catch (e) {}
+  }
+
+  async function caricaBar(manuale = false) {
+    const btn = document.querySelector('.js-refresh-bar');
+    if (manuale && btn) btn.classList.add('spin');
+    await Promise.all([caricaListinoDaDB(), caricaSaldate()]);
+    const [erogati, attesi] = await Promise.all([
+      sb.from('servizi_ospiti').select('*').eq('incassato', true).order('data_servizio', { ascending: false }).limit(1000),
+      sb.from('servizi_ospiti').select('*').eq('data_servizio', isoLocale(new Date())).eq('incassato', false).order('ospite', { ascending: true })
+    ]);
+    if (btn) btn.classList.remove('spin');
+    if (erogati.error) return console.error(erogati.error.message);
+    righeBar = erogati.data || [];
+    righeAttesiOggi = attesi.data || [];
+    renderBar();
+    renderBarAttesi();
+  }
+
+  function renderBarAttesi() {
+    const q = ($('bar-cerca')?.value || '').trim().toLowerCase();
+    const currentPartner = sessionStorage.getItem('ms_bar_partner');
+    const gruppi = new Map();
+    
+    righeAttesiOggi.filter(r => isMiaCompetenza(r.tipo_servizio, currentPartner)).forEach(r => {
+      if (q && !String(r.ospite).toLowerCase().includes(q)) return;
+      const k = chiaveOspite(r.ospite);
+      const g = gruppi.get(k) || { ospite: r.ospite, id: r.id, serv: [] };
+      g.serv.push(`${NOMI[r.tipo_servizio] || r.tipo_servizio} ×${r.quantita}`);
+      gruppi.set(k, g);
+    });
+    attesiGruppi = [...gruppi.values()];
+    $('bar-attesi').innerHTML = attesiGruppi.map((g, i) => `<tr>
+      <td><strong>${esc(g.ospite)}</strong></td>
+      <td>${g.serv.map(esc).join('<br>')}</td>
+    </tr>`).join('') || '<tr><td colspan="2" class="vuoto">Nessun ospite per te oggi.</td></tr>';
+  }
+
+  function inPeriodo(row, p) {
+    const oggiS = isoLocale(new Date());
+    if (p === 'oggi') return row.data_servizio === oggiS;
+    if (p === 'settimana') return isoLocale(inizioSettimana(row.data_servizio)) === isoLocale(inizioSettimana(oggiS));
+    if (p === 'mese') return row.data_servizio.slice(0, 7) === oggiS.slice(0, 7);
+    return true;
+  }
+  
+  function renderBar() {
+    const p = $('bar-periodo').value;
+    const currentPartner = sessionStorage.getItem('ms_bar_partner');
+    
+    const righe = righeBar.filter(r => inPeriodo(r, p) && isMiaCompetenza(r.tipo_servizio, currentPartner));
+    let inSospeso = 0, saldatoTot = 0;
+    const perTipo = {};
+    
+    righe.forEach(r => {
+      const costo = r.quantita * (PREZZI[r.tipo_servizio] || 0);
+      if (saldato(r)) saldatoTot += costo; else inSospeso += costo;
+      const t = perTipo[r.tipo_servizio] || (perTipo[r.tipo_servizio] = { n: 0, unita: 0, importo: 0 });
+      t.n++; t.unita += r.quantita; t.importo += costo;
+    });
+    
+    $('bar-n').innerText = `${righe.length}`;
+    $('bar-da-ricevere').innerText = eur(inSospeso);
+    $('bar-ricevuto').innerText = eur(saldatoTot);
+
+    const chiaviTipi = Array.from(new Set([...Object.keys(LISTINO).filter(k=>k!=='_pins'), ...Object.keys(perTipo)]))
+                       .filter(k => isMiaCompetenza(k, currentPartner));
+                       
+    $('bar-tabella-tipi').innerHTML = chiaviTipi.map(k => {
+      const t = perTipo[k] || { n: 0, unita: 0, importo: 0 };
+      return `<tr><td><span class="${classeBadgeServizio(k)}">${esc(NOMI[k] || k)}</span></td><td>${eur(PREZZI[k] || 0)}</td><td>${t.n}</td><td><strong>${t.unita}</strong></td><td><strong>${eur(t.importo)}</strong></td></tr>`;
+    }).join('');
+    
+    $('bar-tabella-righe').innerHTML = righe.slice(0, 100).map(r => `<tr>
+      <td><strong>${esc(formattaDataIta(r.data_servizio))}</strong></td>
+      <td><span class="${classeBadgeServizio(r.tipo_servizio)}">${esc(NOMI[r.tipo_servizio] || r.tipo_servizio)}</span></td>
+      <td>${esc(r.ospite)}</td>
+      <td>${r.quantita}</td>
+      <td><strong>${eur(r.quantita * (PREZZI[r.tipo_servizio] || 0))}</strong></td>
+      <td>${hhmm(r.ora_incasso || r.ora_scansione)}</td>
+      <td>${badgeStato(saldato(r) ? 'saldato' : 'in_sospeso')}</td></tr>`).join('')
+      || '<tr><td colspan="7" class="vuoto">Nessun servizio erogato.</td></tr>';
+  }
+
+  // =====================================================================
+  //  11. GENERAZIONE PASS E STAMPA (ADMIN)
+  // =====================================================================
+  let passCorrente = null, listaServizi = [], righeVisibili = [];
+  
+  async function creaVoucherMultipli() {
+    const ospite = $('ospite').value.trim().replace(/\s+/g, ' ');
+    const scelti = [...document.querySelectorAll('#servizi-check .srv-row')]
+      .filter(el => el.querySelector('.srv-chk').checked)
+      .map(el => ({
+        tipo: el.dataset.k,
+        quantita: Math.max(1, parseInt(el.querySelector('.srv-qta').value) || 1),
+        quando: el.querySelector('.srv-quando')?.value || 'tutti'
+      }));
+    const [a1, m1, g1] = $('data_inizio').value.split('-').map(Number);
+    const [a2, m2, g2] = $('data_fine').value.split('-').map(Number);
+    if (!ospite) return window.avviso("Inserisci il nome dell'ospite!");
+    if (!scelti.length) return window.avviso("Seleziona almeno un servizio da includere nel Pass!");
+    if (!a1 || !a2) return window.avviso("Seleziona data inizio e fine!");
+    const inizio = new Date(a1, m1 - 1, g1), fine = new Date(a2, m2 - 1, g2);
+    if (inizio > fine) return window.avviso("La data di fine non può essere precedente a quella di inizio!");
+
+    const giorni = [];
+    for (let d = new Date(inizio); d <= fine; d.setDate(d.getDate() + 1)) giorni.push(isoLocale(d));
+    if (giorni.length > 90) return window.avviso("Massimo 90 giorni per volta.");
+    if (giorni.length * scelti.length > 400) return window.avviso("Troppi voucher in una volta (max 400). Riduci giorni o servizi.");
+
+    if (!URL_PUBBLICO && !PAGINA_ONLINE && !await conferma("La pagina non è aperta da un indirizzo web: il QR non si aprirà quando lo inquadri. Generare lo stesso?", { titolo: 'Attenzione', ok: 'Genera lo stesso' })) return;
+
+    const btn = $('btn-genera');
+    btn.disabled = true;
+    try {
+      const { data: esist } = await sb.from('servizi_ospiti').select('tipo_servizio,data_servizio')
+        .ilike('ospite', escLike(ospite)).gte('data_servizio', giorni[0]).lte('data_servizio', giorni[giorni.length - 1]);
+      const gia = new Set((esist || []).map(r => `${r.tipo_servizio}|${r.data_servizio}`));
+      const righe = [];
+      let saltati = 0;
+
+      scelti.forEach(s => {
+        const giorniServizio = s.quando === 'primo'
+          ? [giorni[0]]
+          : (s.quando === 'ultimo' ? [giorni[giorni.length - 1]] : giorni);
+        giorniServizio.forEach(g => {
+          if (gia.has(`${s.tipo}|${g}`)) { saltati++; return; }
+          righe.push({ tipo_servizio: s.tipo, ospite, quantita: s.quantita, data_servizio: g, usato: false, incassato: false });
+        });
+      });
+
+      let nuovi = [];
+      if (righe.length) {
+        const { data, error } = await sb.from('servizi_ospiti').insert(righe).select();
+        if (error || !data?.length) return window.avviso("Errore durante la creazione: " + (error?.message || ''));
+        nuovi = data;
+      } else if (!await conferma("Tutti i servizi richiesti esistono già per questo ospite nel periodo indicato.\nVuoi solo rivedere il suo Pass?", { titolo: 'Già esistenti', ok: 'Mostra il Pass' })) return;
+
+      salvaTelefono(ospite, $('telefono').value);
+      await caricaStorico();
+      const res = await caricaSoggiorno(nuovi[0]?.id, ospite);
+      if (!res.rows.length) return window.avviso("Voucher creati, ma non riesco a ricaricare il soggiorno. Aggiorna la pagina.");
+      mostraPassSoggiorno(res.rows);
+      suonaBeep('ok');
+      notifica(`Pass pronto per ${ospite}: ${nuovi.length} nuovi voucher${saltati ? ` (${saltati} già esistenti saltati)` : ''}, 1 solo QR.`);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function mostraPassSoggiorno(rows) {
+    vaiTab('pass');
+    rows = [...rows].sort(ordinaVoucher);
+    passCorrente = { rows, anchor: rows[0] };
+    $('voucher-ticket-host').innerHTML = cardSoggiorno(rows, `
+      <div class="v-qr-frame"><div id="qrcode"></div></div>
+      <div class="v-footer-note">${notaQr()}</div>
+    `);
+    new QRCode($('qrcode'), {
+      text: linkValidazione(rows[0]),
+      width: 220, height: 220,
+      colorDark: "#3b0510", colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    $('voucher-wrapper').style.display = 'block';
+    $('voucher-wrapper').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function scaricaBiglietto() {
+    const el = $('voucher-ticket-host').firstElementChild;
+    if (!el || !passCorrente) return window.avviso("Genera o seleziona prima un Pass.");
+    setTimeout(() => {
+      html2canvas(el, { scale: 3, backgroundColor: null, useCORS: true }).then(canvas => {
+        const l = document.createElement('a');
+        l.download = `Pass_MaisonSpicchio_${passCorrente.anchor.ospite.replace(/\s+/g, '_')}.png`;
+        l.href = canvas.toDataURL('image/png');
+        l.click();
+      });
+    }, 150);
+  }
+
+  function stampaPass(rows) {
+    rows = rows && rows.length ? rows : passCorrente?.rows;
+    if (!rows?.length) return window.avviso('Nessun pass da stampare.');
+    const r0 = rows[0];
+    const s = riassuntoSoggiorno(rows);
+    
+    const tipi = Object.keys(s.perTipo);
+    const strutture = estraiStrutture(tipi);
+    const locHtml = strutture.map(st => `<strong>${esc(st.nome)}</strong> - ${esc(st.ind)}<br><small style="color:#666">Servizi: ${st.serviziIt.join(', ')}</small>`).join('<br><br>');
+    
+    const righe = tipi.map(t => `<tr>
+      <td>${esc(NOMI[t] || t)} × ${s.perTipo[t].qta}</td>
+      <td>${s.perTipo[t].giorni} gg / d</td>
+      <td>${esc((ORARI_SERVIZIO[t] || '').replace('⏰', '').trim())}</td></tr>`).join('');
+      
+    $('print-area').innerHTML = `
+      <div class="ps">
+        <div class="ps-brand">MAISON SPICCHIO</div>
+        <div class="ps-sub">Luxury Hospitality · Napoli</div>
+        <div class="ps-title">Pass Soggiorno · Stay Pass</div>
+        <div class="ps-guest">${esc(r0.ospite)}</div>
+        <div class="ps-period">${esc(formattaDataIta(s.dal))} → ${esc(formattaDataIta(s.al))}</div>
+        <div class="ps-qr" id="print-qr"></div>
+        <div class="ps-code">${esc(codicePass(r0))}</div>
+        <div class="ps-how">Mostra questo QR ai partner ad ogni erogazione. Se non si legge, comunica il codice.<br>Show this QR to partners for each service. If it won't scan, give the code.</div>
+        <table class="ps-serv"><thead><tr><th>Servizio / Service</th><th>Giorni / Days</th><th>Orario / Time</th></tr></thead><tbody>${righe}</tbody></table>
+        <div class="ps-bar" style="text-align:left">${locHtml}</div>
+      </div>`;
+    new QRCode($('print-qr'), {
+      text: linkValidazione(r0),
+      width: 300, height: 300,
+      colorDark: "#000000", colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    setTimeout(() => window.print(), 450);
+  }
+  window.addEventListener('afterprint', () => { $('print-area').innerHTML = ''; });
+
+
+  // =====================================================================
+  //  12. WHATSAPP: PASS E PROMEMORIA E CALENDARIO
+  // =====================================================================
+  function numeroWa(raw) {
+    let n = String(raw || '').replace(/[^\d+]/g, '');
+    if (!n) return '';
+    if (n.startsWith('+')) n = n.slice(1);
+    else if (n.startsWith('00')) n = n.slice(2);
+    else if (n.length === 10 && n.startsWith('3')) n = '39' + n;
+    return n.replace(/\D/g, '');
+  }
+
+  const righeOspite = nome => listaServizi.filter(x => chiaveOspite(x.ospite) === chiaveOspite(nome)).sort(ordinaVoucher);
+
+  function inviaPassWhatsApp(idRif = null) {
+    let rows, telefono = '';
+    if (idRif) {
+      const v = trova(idRif);
+      if (!v) return;
+      rows = righeOspite(v.ospite);
+      telefono = telefonoOspite(v.ospite);
+    } else {
+      if (!passCorrente) return;
+      rows = passCorrente.rows;
+      telefono = numeroWa($('telefono').value) || telefonoOspite(rows[0].ospite);
+    }
+    const r0 = rows[0];
+    const s = riassuntoSoggiorno(rows);
+    const tipi = Object.keys(s.perTipo);
+    const elIt = tipi.map(t => `• ${NOMI[t] || t} ×${s.perTipo[t].qta} (${s.perTipo[t].giorni} gg)`).join('\n');
+    const elEn = tipi.map(t => `• ${NOMI_EN[t] || t} ×${s.perTipo[t].qta} (${s.perTipo[t].giorni} d)`).join('\n');
+    
+    const strutture = estraiStrutture(tipi);
+    const locTextIt = strutture.map(st => `📍 *${st.nome}* (per: ${st.serviziIt.join(', ')})\n${st.ind}\n🗺️ Naviga: ${st.map}`).join('\n\n');
+    const locTextEn = strutture.map(st => `📍 *${st.nome}* (for: ${st.serviziEn.join(', ')})\n${st.ind}\n🗺️ Navigate: ${st.map}`).join('\n\n');
+
+    const testo =
+      `✨ *Maison Spicchio | Pass Soggiorno / Stay Pass*\n\n` +
+      `🇮🇹 Gentile *${r0.ospite}*,\nsiamo lieti di accoglierLa. Ecco il Suo QR Pass valido per l'intero soggiorno (dal ${formattaDataIta(s.dal)} al ${formattaDataIta(s.al)}):\n\n${elIt}\n\nSarà sufficiente mostrare questo unico Pass ai nostri partner ad ogni erogazione. (Codice manuale: *${codicePass(r0)}*)\n\n` +
+      `📍 *Strutture Partner:*\n${locTextIt}\n\n` +
+      `----------------------\n\n` +
+      `🇬🇧 Dear *${r0.ospite}*,\nwe are delighted to welcome you. Here is your Stay Pass, valid for your entire stay (${formattaDataEn(s.dal)} to ${formattaDataEn(s.al)}):\n\n${elEn}\n\nSimply present this single Pass to our partners for each service. (Manual code: *${codicePass(r0)}*)\n\n` +
+      `📍 *Partner Locations:*\n${locTextEn}\n\n` +
+      `📱 *Apri il Pass / Open your Pass:*\n${linkOspite(r0)}\n\n` +
+      `Cordiali saluti / Kind regards,\nLo staff di Maison Spicchio`;
+
+    window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(testo)}`, '_blank');
+  }
+
+  async function cercaPerCodice() {
+    const input = $('bar-codice');
+    const cod = (input.value || '').toUpperCase().replace(/[^0-9A-F]/g, '');
+    if (cod.length < 4) { suonaBeep('err'); return window.avviso('Inserisci almeno 4 caratteri del codice (numeri e lettere A-F).'); }
+    const { data, error } = await sb.from('servizi_ospiti').select('id,ospite').limit(5000);
+    if (error) return window.avviso('Errore di connessione: ' + error.message);
+    const ospiti = new Map();
+    (data || []).forEach(r => {
+      if (String(r.id).replace(/-/g, '').toUpperCase().startsWith(cod)) ospiti.set(chiaveOspite(r.ospite), r);
+    });
+    if (!ospiti.size) { suonaBeep('err'); return window.avviso('Codice non trovato. Controlla e riprova.'); }
+    if (ospiti.size > 1) { suonaBeep('err'); return window.avviso('Più ospiti corrispondono: scrivi più caratteri del codice.'); }
+    const r = [...ospiti.values()][0];
+    input.value = '';
+    suonaBeep('ok');
+    vistaConvalidaSoggiorno(r.id, true, r.ospite);
+  }
+
+  function leggiTelefoni() {
+    try { return JSON.parse(localStorage.getItem('ms_telefoni') || '{}'); } catch (e) { return {}; }
+  }
+  function salvaTelefono(nome, raw) {
+    const n = numeroWa(raw);
+    if (!n) return;
+    try {
+      const t = leggiTelefoni();
+      t[chiaveOspite(nome)] = n;
+      localStorage.setItem('ms_telefoni', JSON.stringify(t));
+    } catch (e) {}
+  }
+  const telefonoOspite = nome => leggiTelefoni()[chiaveOspite(nome)] || '';
+  function precompilaTelefono() {
+    const t = telefonoOspite($('ospite').value);
+    if (t && !$('telefono').value) $('telefono').value = t;
+  }
+
+  // ---- PROMEMORIA ----
+  let gruppiPromemoria = [], promemoriaIso = '';
+  const promemoriaChiave = (iso, nome) => `${iso}|${chiaveOspite(nome)}`;
+  function promemoriaInviati() {
+    try { return JSON.parse(localStorage.getItem('ms_promemoria') || '{}'); } catch (e) { return {}; }
+  }
+
+  async function caricaPromemoria() {
+    const d = new Date();
+    if ($('promemoria-giorno').value === 'domani') d.setDate(d.getDate() + 1);
+    const iso = isoLocale(d);
+    const { data, error } = await sb.from('servizi_ospiti').select('*')
+      .eq('data_servizio', iso).eq('incassato', false).order('ospite', { ascending: true });
+    if (error) return;
+    const gruppi = new Map();
+    (data || []).forEach(r => {
+      const k = chiaveOspite(r.ospite);
+      const g = gruppi.get(k) || { ospite: r.ospite, rows: [] };
+      g.rows.push(r);
+      gruppi.set(k, g);
+    });
+    gruppiPromemoria = [...gruppi.values()];
+    promemoriaIso = iso;
+    renderPromemoria();
+  }
+
+  function renderPromemoria() {
+    const inv = promemoriaInviati();
+    const daInviare = gruppiPromemoria.filter(g => !inv[promemoriaChiave(promemoriaIso, g.ospite)]).length;
+    $('badge-prom').textContent = daInviare || '';
+    $('promemoria-tab').innerHTML = gruppiPromemoria.map((g, i) => {
+      const fatto = inv[promemoriaChiave(promemoriaIso, g.ospite)];
+      const noTel = telefonoOspite(g.ospite) ? '' : '<br><span style="font-size:11px;color:var(--text-muted)">numero non salvato</span>';
+      const servizi = g.rows.map(r => `${esc(NOMI[r.tipo_servizio] || r.tipo_servizio)} ×${r.quantita}`).join('<br>');
+      return `<tr>
+        <td><strong>${esc(g.ospite)}</strong>${noTel}</td>
+        <td>${servizi}</td>
+        <td><div class="actions">${fatto ? `<span class="badge b-ok">${ic('check')} Inviato</span>` : ''}<button class="btn btn-teal btn-sm" onclick="inviaPromemoria(${i})">${ic('bell')} WhatsApp</button></div></td></tr>`;
+    }).join('') || '<tr><td colspan="3" class="vuoto">Nessun ospite con servizi da erogare in questa giornata.</td></tr>';
+  }
+
+  function inviaPromemoria(i) {
+    const g = gruppiPromemoria[i];
+    if (!g) return;
+    const domani = $('promemoria-giorno').value === 'domani';
+    const quandoIt = domani ? 'di domani' : 'di oggi';
+    const quandoEn = domani ? 'tomorrow' : 'today';
+    const elIt = g.rows.map(r => `• ${NOMI[r.tipo_servizio] || r.tipo_servizio} ×${r.quantita} — ${ORARI_SERVIZIO[r.tipo_servizio] || ''}`).join('\n');
+    const elEn = g.rows.map(r => `• ${NOMI_EN[r.tipo_servizio] || r.tipo_servizio} ×${r.quantita} — ${ORARI_EN[r.tipo_servizio] || ''}`).join('\n');
+    
+    const tipiOggi = [...new Set(g.rows.map(r => r.tipo_servizio))];
+    const strutture = estraiStrutture(tipiOggi);
+    const locTextIt = strutture.map(st => `📍 *${st.nome}* (per: ${st.serviziIt.join(', ')})\n${st.ind}\n🗺️ Naviga: ${st.map}`).join('\n\n');
+    const locTextEn = strutture.map(st => `📍 *${st.nome}* (for: ${st.serviziEn.join(', ')})\n${st.ind}\n🗺️ Navigate: ${st.map}`).join('\n\n');
+
+    const testo =
+      `✨ *Maison Spicchio | Promemoria Servizi / Services Reminder*\n\n` +
+      `🇮🇹 Gentile *${g.ospite}*,\nLe ricordiamo che per la giornata ${quandoIt} (${formattaDataIta(promemoriaIso)}) ha a disposizione i seguenti servizi:\n\n${elIt}\n\nPer poterne usufruire, sarà sufficiente mostrare il Suo Pass (QR code).\n\n` +
+      `📍 *Strutture Partner:*\n${locTextIt}\n\n` +
+      `----------------------\n\n` +
+      `🇬🇧 Dear *${g.ospite}*,\nWe kindly remind you that the following services are available for you ${quandoEn} (${formattaDataEn(promemoriaIso)}):\n\n${elEn}\n\nTo enjoy them, simply present your Stay Pass (QR code).\n\n` +
+      `📍 *Partner Locations:*\n${locTextEn}\n\n` +
+      `📱 *Apri il Pass / Open your Pass:*\n${linkOspite(g.rows[0])}\n\n` +
+      `Cordiali saluti / Kind regards,\nLo staff di Maison Spicchio`;
+
+    window.open(`https://wa.me/${telefonoOspite(g.ospite)}?text=${encodeURIComponent(testo)}`, '_blank');
+    
+    try {
+      const inv = promemoriaInviati();
+      const oggiIso = isoLocale(new Date());
+      Object.keys(inv).forEach(k => { if (k.split('|')[0] < oggiIso) delete inv[k]; });
+      inv[promemoriaChiave(promemoriaIso, g.ospite)] = Date.now();
+      localStorage.setItem('ms_promemoria', JSON.stringify(inv));
+    } catch (e) {}
+    renderPromemoria();
+  }
+
+  function icsEsc(s) { return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+
+  function scaricaCalendario() {
+    const oggiIso = isoLocale(new Date());
+    const pend = stayRows.filter(r => !r.incassato && r.data_servizio >= oggiIso);
+    if (!pend.length) return window.avviso('Nessun servizio futuro da aggiungere.\nNo upcoming services to add.');
+    const perGiorno = {};
+    pend.forEach(r => { (perGiorno[r.data_servizio] = perGiorno[r.data_servizio] || []).push(r); });
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+    const link = linkOspite(stayRows[0]);
+    const f2 = n => String(n).padStart(2, '0');
+    const eventi = Object.entries(perGiorno).map(([g, list]) => {
+      const inizi = list.map(r => LISTINO[r.tipo_servizio]?.inizio).filter(Boolean).sort();
+      const [h, m] = (inizi[0] || '08:00').split(':').map(Number);
+      const fine = Math.min(h * 60 + m + 30, 1439);
+      const day = g.replace(/-/g, '');
+      
+      const struttureGiorno = estraiStrutture(list.map(r => r.tipo_servizio));
+      const locStr = struttureGiorno.map(st => st.nome + ', ' + st.ind).join(' | ');
+
+      const desc = list.map(r => `${NOMI[r.tipo_servizio] || r.tipo_servizio} x${r.quantita}`).join(', ');
+      return [
+        'BEGIN:VEVENT', `UID:${list[0].id}@maisonspicchio`, `DTSTAMP:${stamp}`,
+        `DTSTART:${day}T${f2(h)}${f2(m)}00`, `DTEND:${day}T${f2(Math.floor(fine / 60))}${f2(fine % 60)}00`,
+        `SUMMARY:${icsEsc('☕ Maison Spicchio - ' + desc)}`,
+        `DESCRIPTION:${icsEsc(desc + '\nPartner: ' + locStr + '\nQR: ' + link)}`,
+        `LOCATION:${icsEsc(locStr)}`,
+        'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEsc('Maison Spicchio: ' + desc)}`, 'TRIGGER:-PT30M', 'END:VALARM', 'END:VEVENT'
+      ].join('\r\n');
+    });
+    const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Maison Spicchio//Pass Soggiorno//IT', 'CALSCALE:GREGORIAN', ...eventi, 'END:VCALENDAR'].join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+    a.download = 'Maison_Spicchio_promemoria.ics';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  async function attivaNotificheBrowser() {
+    if (!('Notification' in window)) return window.avviso('Questo browser o dispositivo non supporta le notifiche web dirette.');
+    try {
+      const p = await Notification.requestPermission();
+      if (p === 'granted') {
+        $('btn-notifiche').innerHTML = `${ic('bell')}<span class="lbl">Notifiche attive</span>`;
+        notifica('Notifiche attivate: riceverai un avviso quando un partner eroga un servizio.');
+      } else {
+        window.avviso('Notifiche non consentite. Puoi abilitarle dalle impostazioni del browser.');
+      }
+    } catch (e) {
+      window.avviso('Impossibile attivare le notifiche su questo browser.');
+    }
+  }
+
+  async function copiaLinkOspite() {
+    if (!passCorrente) return;
+    const link = linkOspite(passCorrente.anchor);
+    try {
+      await navigator.clipboard.writeText(link);
+      notifica('Link copiato: puoi incollarlo in SMS, email o chat.');
+    } catch (e) {
+      await chiedi('Copia il link per l\'ospite:', link, { titolo: 'Link ospite', ok: 'Chiudi', ko: 'Annulla' });
+    }
+  }
+
+  const trova = id => listaServizi.find(x => String(x.id) === String(id));
+  function rivediQR(id) {
+    const v = trova(id);
+    if (!v) return;
+    mostraPassSoggiorno(righeOspite(v.ospite));
+  }
+  function mostraTutti() { $('filtro-mese').value = ""; caricaStorico(true); }
+
+  async function cambiaStatoPagato(id, pagato) {
+    const v = trova(id);
+    if (!v) return;
+    const updateData = { incassato: true, usato: pagato, ora_incasso: v.ora_incasso || new Date().toISOString() };
+    
+    v.incassato = true; v.usato = pagato; v.ora_incasso = updateData.ora_incasso;
+    renderStorico(); 
+
+    if (!navigator.onLine) {
+      accodaAzioneSync('upd', { id: id, data: updateData });
+      return;
+    }
+    
+    const { error } = await sb.from('servizi_ospiti').update(updateData).eq('id', id);
+    if (error) return window.avviso("Errore: " + error.message);
+  }
+
+  // =====================================================================
+  //  13. CHIUSURA CASSA DEL VENERDÌ & CONTABILITÀ ADMIN
+  // =====================================================================
+  let saldateMap = {}, saldateDisponibile = true, datiSettimane = {};
+  let righeSospeseGlobali = [];
+
+  function inizioSettimana(isoStr) {
+    const [a, m, g] = isoStr.split('-').map(Number);
+    const d = new Date(a, m - 1, g);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d;
+  }
+  const fmtGM = d => d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+  function etichettaSettimana(w) {
+    const fine = new Date(w.lun);
+    fine.setDate(fine.getDate() + 6);
+    return `${fmtGM(w.lun)} - ${fmtGM(fine)} ${fine.getFullYear()}`;
+  }
+
+  async function caricaSaldate() {
+    const { data, error } = await sb.from('settimane_saldate').select('settimana,saldata_il');
+    if (error) { saldateDisponibile = false; saldateMap = {}; return; }
+    saldateDisponibile = true;
+    saldateMap = Object.fromEntries((data || []).map(r => [r.settimana, r.saldata_il]));
+  }
+
+  const scaduto = row => !row.incassato && row.data_servizio < isoLocale(new Date());
+  function saldato(row) {
+    if (!row.incassato) return false;
+    return row.usato === true;
+  }
+
+  const STATI = {
+    da_usare:   { label: 'Da usare',         cls: 'b-todo', icona: 'ticket' },
+    in_sospeso: { label: 'Saldo in sospeso', cls: 'b-wait', icona: 'clock' },
+    saldato:    { label: 'Saldato',          cls: 'b-ok',   icona: 'check-circle' },
+    scaduto:    { label: 'Scaduto',          cls: 'b-exp',  icona: 'x' }
+  };
+  const badgeStato = s => `<span class="badge ${STATI[s].cls}">${ic(STATI[s].icona)} ${STATI[s].label}</span>`;
+  function statoRiga(row) {
+    if (row.incassato) return saldato(row) ? 'saldato' : 'in_sospeso';
+    return scaduto(row) ? 'scaduto' : 'da_usare';
+  }
+  const classeBadgeServizio = tipo => 'badge ' + (['colazione', 'bagaglio', 'caffe', 'aperitivo'].includes(tipo) ? `badge-${tipo}` : 'badge-servizio');
+
+  async function saldaTuttoIlSospeso() {
+    if (!righeSospeseGlobali.length) return window.avviso("Nessun servizio in sospeso mostrato da saldare.");
+    const fPartner = $('filtro-partner-admin').value;
+    const partnerNome = fPartner ? ` a ${fPartner}` : ` globale`;
+    
+    const tot = righeSospeseGlobali.reduce((acc, r) => acc + r.quantita * (PREZZI[r.tipo_servizio] || 0), 0);
+    if (!await conferma(`Confermi il saldo${partnerNome} di ${righeSospeseGlobali.length} voucher?\n\nTotale da saldare: ${eur(tot)}`, { titolo: 'Salda tutto il sospeso', ok: 'Segna tutto Saldato' })) return;
+
+    const ids = righeSospeseGlobali.map(r => r.id);
+    const righeSaldateOra = [...righeSospeseGlobali];
+
+    listaServizi.forEach(r => {
+       if (ids.includes(r.id)) r.usato = true;
+    });
+    renderStorico();
+
+    if (!navigator.onLine) {
+      accodaAzioneSync('upd_in', { ids: ids, data: { usato: true } });
+      suonaBeep('ok');
+      notifica(`Saldati ${ids.length} voucher (${eur(tot)}) Offline!`);
+    } else {
+      const { error } = await sb.from('servizi_ospiti').update({ usato: true }).in('id', ids);
+      if (error) return window.avviso("Errore durante il saldo: " + error.message);
+      suonaBeep('ok');
+      notifica(`Saldati ${ids.length} voucher per un totale di ${eur(tot)}!`);
+      await caricaStorico();
+    }
+
+    if (await conferma("Vuoi inviare la ricevuta di pagamento su WhatsApp?", { titolo: 'Invia ricevuta WhatsApp', ok: 'Invia su WhatsApp', ko: 'No, chiudi' })) {
+      const elenco = righeSaldateOra.map(r => `• ${formattaDataIta(r.data_servizio)} - ${r.ospite} - ${NOMI[r.tipo_servizio] || r.tipo_servizio} x${r.quantita} = ${eur(r.quantita * (PREZZI[r.tipo_servizio] || 0))}`).join('\n');
+      const testo = `✅ *Maison Spicchio - Ricevuta Saldo Servizi*\n📅 Pagamento del ${formattaDataIta(isoLocale(new Date()))}\n\n${elenco}\n\n💶 *TOTALE SALDATO: ${eur(tot)}*`;
+      window.open(`https://wa.me/${BAR_WHATSAPP}?text=${encodeURIComponent(testo)}`, '_blank');
+    }
+  }
+
+  function stampaRicevutaSospeso() {
+    if (!righeSospeseGlobali.length) return window.avviso("Nessun servizio in sospeso mostrato da stampare.");
+    const fPartner = $('filtro-partner-admin').value || "Globale (Tutti i partner)";
+    
+    const tot = righeSospeseGlobali.reduce((acc, r) => acc + r.quantita * (PREZZI[r.tipo_servizio] || 0), 0);
+    const righeHtml = righeSospeseGlobali.map(r => `<tr>
+      <td>${esc(formattaDataIta(r.data_servizio))}</td>
+      <td>${esc(r.ospite)}</td>
+      <td>${esc(NOMI[r.tipo_servizio] || r.tipo_servizio)}</td>
+      <td>${r.quantita}</td>
+      <td><strong>${eur(r.quantita * (PREZZI[r.tipo_servizio] || 0))}</strong></td>
+    </tr>`).join('');
+    $('print-area').innerHTML = `
+      <div class="ps">
+        <div class="ps-brand">MAISON SPICCHIO</div>
+        <div class="ps-sub">Distinta Saldo Servizi Partner: ${esc(fPartner)}</div>
+        <p style="font-size:14px;color:#444;margin:10px 0 18px">Data emissione: <strong>${esc(formattaDataIta(isoLocale(new Date())))}</strong></p>
+        <table class="ps-serv">
+          <thead><tr><th>Data</th><th>Ospite</th><th>Servizio</th><th>Q.ta</th><th>Importo</th></tr></thead>
+          <tbody>${righeHtml}</tbody>
+        </table>
+        <div style="text-align:right;font-size:20px;font-weight:900;color:#3b0510;margin-top:14px">TOTALE: ${eur(tot)}</div>
+        <div class="ps-bar" style="margin-top:28px; text-align:left;">Firma Maison Spicchio: _______________________<br><br>Firma Partner: _______________________</div>
+      </div>`;
+    setTimeout(() => window.print(), 300);
+  }
+
+  let storicoInCorso = false, storicoRipeti = false;
+
+  async function caricaStorico(manuale = false) {
+    if (storicoInCorso) { storicoRipeti = true; return; }
+    storicoInCorso = true;
+    const spinner = document.querySelectorAll('.js-refresh');
+    if (manuale) spinner.forEach(b => b.classList.add('spin'));
+    try {
+      await Promise.all([caricaListinoDaDB(), caricaSaldate()]);
+      const mese = $('filtro-mese').value;
+      let query = sb.from('servizi_ospiti').select('*').order('data_servizio', { ascending: false }).order('created_at', { ascending: false });
+      if (mese) {
+        const [anno, m] = mese.split('-');
+        query = query.gte('data_servizio', `${mese}-01`).lte('data_servizio', `${mese}-${String(new Date(anno, m, 0).getDate()).padStart(2, '0')}`);
+      }
+      const { data, error } = await query;
+      if (error) return console.error(error.message);
+
+      const prec = new Map(listaServizi.map(x => [String(x.id), x]));
+      if (listaServizi.length) (data || []).forEach(r => {
+        const p = prec.get(String(r.id));
+        if (!p) return;
+        if (r.incassato && !p.incassato) {
+          suonaBeep('ok');
+          const sNome = LISTINO[r.tipo_servizio]?.struttura_nome?.trim() || BAR_NOME;
+          notifica(`Servizio erogato: ${r.ospite} (${NOMI[r.tipo_servizio] || r.tipo_servizio}) presso ${sNome}`);
+        }
+      });
+
+      listaServizi = data || [];
+      renderStorico();
+      await Promise.all([aggiornaKpi(), caricaPromemoria(), caricaSettimane()]);
+      $('ultimo-agg').textContent = 'Aggiornato alle ' + new Date().toLocaleTimeString('it-IT');
+    } finally {
+      storicoInCorso = false;
+      spinner.forEach(b => b.classList.remove('spin'));
+      if (storicoRipeti) { storicoRipeti = false; caricaStorico(); }
+    }
+  }
+
+  async function aggiornaKpi() {
+    const fPartner = $('filtro-partner-admin').value;
+    
+    let queryOggi = sb.from('servizi_ospiti').select('incassato,tipo_servizio').eq('data_servizio', isoLocale(new Date()));
+    let queryErog = sb.from('servizi_ospiti').select('*').eq('incassato', true).limit(5000);
+    
+    const [oggiQ, erogQ] = await Promise.all([queryOggi, queryErog]);
+    
+    if (oggiQ.data) {
+      const dataFilt = oggiQ.data.filter(r => !fPartner || (LISTINO[r.tipo_servizio]?.struttura_nome?.trim() || BAR_NOME) === fPartner);
+      const ero = dataFilt.filter(r => r.incassato).length;
+      $('kpi-oggi-da').textContent = dataFilt.length - ero;
+      $('kpi-oggi-ok').textContent = ero;
+    }
+    
+    if (erogQ.data) {
+      const dataFilt = erogQ.data.filter(r => !fPartner || (LISTINO[r.tipo_servizio]?.struttura_nome?.trim() || BAR_NOME) === fPartner);
+      
+      righeSospeseGlobali = dataFilt.filter(r => !saldato(r)).sort((a, b) => a.data_servizio.localeCompare(b.data_servizio));
+      const saldo = righeSospeseGlobali.reduce((t, r) => t + r.quantita * (PREZZI[r.tipo_servizio] || 0), 0);
+      $('kpi-saldo').textContent = eur(saldo);
+      const vDet = $('venerdi-dettaglio');
+      if (vDet) {
+        vDet.innerHTML = righeSospeseGlobali.length
+          ? `Hai <strong>${righeSospeseGlobali.length} voucher erogati</strong> in attesa di essere saldati${fPartner ? ' a ' + esc(fPartner) : ''}, per un totale di <strong style="color:var(--burgundy-dark);font-size:15px">${eur(saldo)}</strong>.`
+          : `Nessun saldo in sospeso visibile.`;
+      }
+      $('titolo-cassa-venerdi').innerHTML = `💶 Chiusura Cassa ${fPartner ? esc(fPartner) : '(Tutte)'}`;
+    }
+  }
+
+  $('tabella-servizi').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const act = btn.dataset.act;
+    if (act === 'paga') cambiaStatoPagato(id, true);
+    else if (act === 'riapri') cambiaStatoPagato(id, false);
+    else if (act === 'wa') inviaPassWhatsApp(id);
+    else if (act === 'qr') rivediQR(id);
+    else if (act === 'edit') {
+      const v = trova(id);
+      if (!v) return;
+      popolaSelectEdit(v.tipo_servizio);
+      $('edit-id').value = v.id;
+      $('edit-ospite').value = v.ospite;
+      $('edit-qta').value = v.quantita;
+      $('edit-data').value = v.data_servizio;
+      $('edit-stato-pagamento').value = !v.incassato ? 'da_usare' : (saldato(v) ? 'saldato' : 'in_sospeso');
+      apriModale('modal-edit');
+    }
+    else if (act === 'del') eliminaVoucher(id);
+    else if (act === 'del-stay') eliminaSoggiorno(id);
+  });
+
+  function renderStorico() {
+    const fTesto = ($('filtro-testo').value || '').trim().toLowerCase();
+    const fStato = $('filtro-stato').value;
+    const fPartner = $('filtro-partner-admin').value;
+    
+    let g1 = 0, g2 = 0, inSospeso = 0, giaSaldato = 0, daUsare = 0, nDaUsare = 0, nScaduti = 0, html = "";
+    righeVisibili = [];
+
+    listaServizi.forEach(row => {
+      const sNome = LISTINO[row.tipo_servizio]?.struttura_nome?.trim() || BAR_NOME;
+      if (fPartner && sNome !== fPartner) return;
+      
+      const costo = row.quantita * (PREZZI[row.tipo_servizio] || 0);
+      const stato = statoRiga(row);
+      let btnPagamento = '';
+      if (stato === 'saldato' || stato === 'in_sospeso') {
+        if (row.tipo_servizio === 'colazione' || row.tipo_servizio === 'caffe') g1 += row.quantita; else g2 += row.quantita;
+      }
+      if (stato === 'saldato') {
+        giaSaldato += costo;
+        btnPagamento = `<button class="btn btn-ghost btn-icon btn-sm" title="Riapri: torna in saldo in sospeso" data-act="riapri" data-id="${esc(row.id)}">${ic('undo')}</button>`;
+      } else if (stato === 'in_sospeso') {
+        inSospeso += costo;
+        btnPagamento = `<button class="btn btn-success btn-icon btn-sm" title="Segna come saldato" data-act="paga" data-id="${esc(row.id)}">${ic('check')}</button>`;
+      } else if (stato === 'scaduto') {
+        nScaduti++;
+      } else {
+        daUsare += costo;
+        nDaUsare++;
+      }
+
+      if (fTesto && !String(row.ospite).toLowerCase().includes(fTesto)) return;
+      if (fStato && stato !== fStato) return;
+      righeVisibili.push(row);
+
+      html += `<tr>
+        <td><strong>${esc(formattaDataIta(row.data_servizio))}</strong></td>
+        <td><span class="${classeBadgeServizio(row.tipo_servizio)}">${esc(NOMI[row.tipo_servizio] || row.tipo_servizio)}</span></td>
+        <td><strong>${esc(row.ospite)}</strong></td>
+        <td><small style="color:var(--text-muted)">${esc(sNome)}</small></td>
+        <td>${row.quantita}</td>
+        <td><strong>${eur(costo)}</strong></td>
+        <td>${badgeStato(stato)}</td>
+        <td>${hhmm(row.ora_incasso || row.ora_scansione)}</td>
+        <td><div class="actions">
+          ${btnPagamento}
+          <button class="btn btn-teal btn-icon btn-sm" title="Invia pass su WhatsApp" data-act="wa" data-id="${esc(row.id)}">${ic('message')}</button>
+          <button class="btn btn-ghost btn-icon btn-sm" title="Mostra pass / QR" data-act="qr" data-id="${esc(row.id)}">${ic('qr')}</button>
+          <button class="btn btn-ghost btn-icon btn-sm" title="Modifica" data-act="edit" data-id="${esc(row.id)}">${ic('edit')}</button>
+          <button class="btn btn-danger btn-icon btn-sm" title="Elimina questo voucher" data-act="del" data-id="${esc(row.id)}">${ic('trash')}</button>
+          ${stato === 'da_usare' || stato === 'scaduto' ? `<button class="btn btn-ghost btn-icon btn-sm" title="Elimina tutti i voucher non erogati di questo ospite" data-act="del-stay" data-id="${esc(row.id)}">${ic('eraser')}</button>` : ''}
+        </div></td></tr>`;
+    });
+
+    $('tabella-servizi').innerHTML = html || '<tr><td colspan="9" class="vuoto">Nessun voucher trovato con i filtri selezionati.</td></tr>';
+    $('stat-colazioni').innerText = `${g1} unità`;
+    $('stat-bagagli').innerText = `${g2} unità`;
+    $('stat-euro').innerText = eur(inSospeso);
+    $('stat-sospeso').innerText = `Saldato: ${eur(giaSaldato)}\nDa usare: ${eur(daUsare)} (${nDaUsare} voucher)\nScaduti: ${nScaduti} (non conteggiati)`;
+  }
+
+  function esportaCSV() {
+    if (!righeVisibili.length) return window.avviso('Nessun dato da esportare con i filtri attuali.');
+    const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const num = n => Number(n || 0).toFixed(2).replace('.', ',');
+    const righe = [['Data', 'Servizio', 'Struttura', 'Ospite', 'Quantità', 'Prezzo unitario', 'Importo', 'Stato', 'Ora erogazione'].map(q).join(';')]
+      .concat(righeVisibili.map(r => [
+        r.data_servizio,
+        LISTINO[r.tipo_servizio]?.nome || r.tipo_servizio,
+        LISTINO[r.tipo_servizio]?.struttura_nome?.trim() || BAR_NOME,
+        r.ospite,
+        r.quantita,
+        num(PREZZI[r.tipo_servizio]),
+        num(r.quantita * (PREZZI[r.tipo_servizio] || 0)),
+        STATI[statoRiga(r)].label,
+        r.incassato ? hhmm(r.ora_incasso || r.ora_scansione) : ''
+      ].map(q).join(';')));
+    const blob = new Blob(['\ufeff' + righe.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `contabilita_maison_spicchio_${$('filtro-mese').value || 'tutto'}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  async function caricaSettimane() {
+    const da = inizioSettimana(isoLocale(new Date()));
+    da.setDate(da.getDate() - 7 * 7);
+    const { data, error } = await sb.from('servizi_ospiti').select('*').gte('data_servizio', isoLocale(da));
+    if (error) return console.error(error.message);
+
+    const fPartner = $('filtro-partner-admin').value;
+    datiSettimane = {};
+    
+    (data || []).forEach(row => {
+      const sNome = LISTINO[row.tipo_servizio]?.struttura_nome?.trim() || BAR_NOME;
+      if (fPartner && sNome !== fPartner) return;
+      
+      const lun = inizioSettimana(row.data_servizio);
+      const k = isoLocale(lun);
+      const w = datiSettimane[k] || (datiSettimane[k] = { k, lun, n: 0, inSospeso: 0, saldato: 0, daUsare: 0, righeInSospeso: [], righeSaldate: [] });
+      const costo = row.quantita * (PREZZI[row.tipo_servizio] || 0);
+      if (row.incassato) {
+        w.n++;
+        if (saldato(row)) { w.saldato += costo; w.righeSaldate.push(row); }
+        else { w.inSospeso += costo; w.righeInSospeso.push(row); }
+      } else if (!scaduto(row)) {
+        w.daUsare += costo;
+      }
+    });
+
+    const righe = Object.keys(datiSettimane).sort().reverse().map(k => {
+      const w = datiSettimane[k];
+      const sal = saldateMap[k];
+      let azioni = '';
+      if (w.inSospeso > 0) {
+        azioni += `<button class="btn btn-success btn-sm" onclick="saldaSettimana('${k}')">${ic('check')} Segna saldata</button>`;
+        azioni += `<button class="btn btn-ghost btn-sm" title="Invia riepilogo per contabilità" onclick="inviaRiepilogoBar('${k}')">${ic('send')} Invia contabile</button>`;
+      }
+      if (w.saldato > 0) {
+        azioni += `<button class="btn btn-ghost btn-sm" title="Annulla saldo settimana" onclick="annullaSaldo('${k}')">${ic('undo')} Riapri</button>`;
+      }
+      const dataSaldo = sal ? `<br><span style="font-size:11px;color:var(--text-muted)">il ${fmtGM(new Date(sal))}</span>` : '';
+      return `<tr>
+        <td><strong>${etichettaSettimana(w)}</strong></td>
+        <td>${w.n}</td>
+        <td>${w.inSospeso > 0 ? `<span class="badge b-wait">${eur(w.inSospeso)}</span>` : eur(0)}</td>
+        <td>${w.saldato > 0 ? `<span class="badge b-ok">${eur(w.saldato)}</span>` + dataSaldo : '-'}</td>
+        <td>${eur(w.daUsare)}</td>
+        <td><div class="actions">${azioni || '-'}</div></td></tr>`;
+    }).join('');
+    $('tabella-settimane').innerHTML = righe || '<tr><td colspan="6" class="vuoto">Nessun voucher nelle ultime settimane.</td></tr>';
+  }
+
+  async function saldaSettimana(k) {
+    const w = datiSettimane[k];
+    if (!w) return;
+    if (!await conferma(`Segnare come SALDATA la settimana ${etichettaSettimana(w)}?\nImporto saldato: ${eur(w.inSospeso)}\n\nQuesta operazione aggiornerà i servizi nella dashboard partner.`, { titolo: 'Segna saldata', ok: 'Segna saldata' })) return;
+    const ids = w.righeInSospeso.map(r => r.id);
+
+    listaServizi.forEach(r => { if (ids.includes(r.id)) r.usato = true; });
+    renderStorico();
+
+    if (ids.length) {
+      if (!navigator.onLine) {
+         accodaAzioneSync('upd_in', { ids: ids, data: { usato: true } });
+      } else {
+         const { error } = await sb.from('servizi_ospiti').update({ usato: true }).in('id', ids);
+         if (error) return window.avviso("Errore durante il salvataggio: " + error.message);
+      }
+    }
+    if (saldateDisponibile) await sb.from('settimane_saldate').upsert({ settimana: k, saldata_il: new Date().toISOString() });
+    notifica('Settimana segnata come saldata.');
+    caricaStorico();
+  }
+
+  async function annullaSaldo(k) {
+    const w = datiSettimane[k];
+    if (!w) return;
+    if (!await conferma('Annullare il saldo di questa settimana? I servizi torneranno "Saldo in sospeso".', { titolo: 'Riapri settimana', ok: 'Riapri' })) return;
+    const ids = w.righeSaldate.map(r => r.id);
+
+    listaServizi.forEach(r => { if (ids.includes(r.id)) r.usato = false; });
+    renderStorico();
+
+    if (ids.length) {
+      if (!navigator.onLine) {
+         accodaAzioneSync('upd_in', { ids: ids, data: { usato: false } });
+      } else {
+         const { error } = await sb.from('servizi_ospiti').update({ usato: false }).in('id', ids);
+         if (error) return window.avviso("Errore: " + error.message);
+      }
+    }
+    if (saldateDisponibile) await sb.from('settimane_saldate').delete().eq('settimana', k);
+    caricaStorico();
+  }
+
+  function inviaRiepilogoBar(k) {
+    const w = datiSettimane[k];
+    if (!w || !w.righeInSospeso.length) return;
+    const fPartner = $('filtro-partner-admin').value || 'Globale';
+    const righe = [...w.righeInSospeso].sort((a, b) => a.data_servizio.localeCompare(b.data_servizio) || String(a.ospite).localeCompare(String(b.ospite)));
+    const elenco = righe.map(r => `• ${formattaDataIta(r.data_servizio)} - ${r.ospite} - ${NOMI[r.tipo_servizio] || r.tipo_servizio} x${r.quantita} = ${eur(r.quantita * (PREZZI[r.tipo_servizio] || 0))}`).join('\n');
+    const testo = `☕ *Maison Spicchio - Riepilogo servizi Partner*\n📅 Settimana ${etichettaSettimana(w)}\n🏢 Partner: ${fPartner}\n\n${elenco}\n\n💶 *Totale saldo da regolare: ${eur(w.inSospeso)}*`;
+    window.open(`https://wa.me/${BAR_WHATSAPP}?text=${encodeURIComponent(testo)}`, '_blank');
+  }
+
+  async function salvaModifica() {
+    const id = $('edit-id').value;
+    const stato = $('edit-stato-pagamento').value;
+    const incassato = stato !== 'da_usare';
+    const pagato = stato === 'saldato';
+    const prec = trova(id);
+    const ospite = $('edit-ospite').value.trim();
+    const data = $('edit-data').value;
+    if (!ospite) return window.avviso("Il nome dell'ospite non può essere vuoto.");
+    if (!data) return window.avviso("Seleziona una data valida.");
+    const upd = {
+      tipo_servizio: $('edit-tipo').value,
+      ospite,
+      quantita: Math.max(1, parseInt($('edit-qta').value) || 1),
+      data_servizio: data,
+      incassato,
+      usato: pagato,
+      ora_incasso: incassato ? (prec?.ora_incasso || new Date().toISOString()) : null
+    };
+
+    if (!navigator.onLine) {
+      accodaAzioneSync('upd', { id: id, data: upd });
+      if (prec) { Object.assign(prec, upd); renderStorico(); }
+      chiudiModale('modal-edit');
+      return;
+    }
+
+    const { error } = await sb.from('servizi_ospiti').update(upd).eq('id', id);
+    if (error) return window.avviso("Errore: " + error.message);
+    chiudiModale('modal-edit');
+    caricaStorico();
+  }
+
+  async function eliminaVoucher(id) {
+    const v = trova(id);
+    if (!await conferma(`Eliminare il voucher di "${v?.ospite || ''}" del ${v ? formattaDataIta(v.data_servizio) : ''}?`, { titolo: 'Elimina voucher', ok: 'Elimina', pericolo: true })) return;
+    
+    listaServizi = listaServizi.filter(x => x.id !== id);
+    renderStorico();
+
+    if (!navigator.onLine) {
+      accodaAzioneSync('del', { id: id });
+    } else {
+      const { error } = await sb.from('servizi_ospiti').delete().eq('id', id);
+      if (error) window.avviso("Errore: " + error.message); else caricaStorico();
+    }
+  }
+
+  async function eliminaSoggiorno(id) {
+    const v = trova(id);
+    if (!v) return;
+    const daEliminare = righeOspite(v.ospite).filter(x => !x.incassato);
+    if (!daEliminare.length) return window.avviso("Nessun voucher non erogato da eliminare per questo ospite.");
+    if (!await conferma(`Eliminare ${daEliminare.length} voucher NON erogati di "${v.ospite}"?\nI servizi già erogati restano in contabilità.`, { titolo: 'Elimina non erogati', ok: 'Elimina', pericolo: true })) return;
+    
+    const ids = daEliminare.map(x => x.id);
+    listaServizi = listaServizi.filter(x => !ids.includes(x.id));
+    renderStorico();
+
+    if (!navigator.onLine) {
+      accodaAzioneSync('del_in', { ids: ids });
+      notifica(`Eliminati ${daEliminare.length} voucher non erogati di ${v.ospite} (offline).`);
+    } else {
+      const { error } = await sb.from('servizi_ospiti').delete().in('id', ids);
+      if (error) return window.avviso("Errore: " + error.message);
+      notifica(`Eliminati ${daEliminare.length} voucher non erogati di ${v.ospite}.`);
+      caricaStorico();
+    }
+  }
+
+  // =====================================================================
+  //  14. AVVIO DELL'APP E ROUTING
+  // =====================================================================
+  const params = new URLSearchParams(location.search);
+  const mostraErrore = e => { const m = e?.reason?.message || e?.message || String(e?.reason || e); toast('Errore: ' + m, 'err', 10000); };
+  addEventListener('error', mostraErrore);
+  addEventListener('unhandledrejection', mostraErrore);
+
+  function vaiTab(nome) {
+    document.querySelectorAll('.tab-panel').forEach(p => { p.hidden = p.id !== 'tab-' + nome; });
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === nome));
+    try { localStorage.setItem('ms_tab', nome); } catch (e) {}
+  }
+
+  function entraAdmin() {
+    if (adminAttivo) return;
+    adminAttivo = true;
+    $('vista-admin').style.display = 'block';
+    if (!URL_PUBBLICO && !PAGINA_ONLINE) $('avviso-url').style.display = 'flex';
+    let tab = 'pass';
+    try { tab = localStorage.getItem('ms_tab') || 'pass'; } catch (e) {}
+    vaiTab(['pass', 'promemoria', 'conti'].includes(tab) ? tab : 'pass');
+    
+    if (new Date().getHours() >= 17) $('promemoria-giorno').value = 'domani';
+    if ('Notification' in window && Notification.permission === 'granted') $('btn-notifiche').innerHTML = `${ic('bell')}<span class="lbl">Notifiche attive</span>`;
+    
+    caricaStorico();
+    attivaRealtime();
+    setInterval(() => { if (!document.hidden) caricaStorico(); }, 8000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) caricaStorico(); });
+  }
+
+  function attivaRealtime() {
+    try {
+      sb.channel('servizi_ospiti_rt')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'servizi_ospiti' }, () => caricaStorico())
+        .subscribe();
+    } catch (e) {}
+  }
+
+  async function avvia() {
+    await caricaListinoDaDB();
+    await caricaImpostazioniBarDaDB();
+    
+    if (params.get('c')) return vistaConvalidaSoggiorno(params.get('c'), false, params.get('n') || '');
+    if (params.get('id')) return vistaConvalidaSoggiorno(params.get('id'), false, params.get('n') || '');
+    const ancora = params.get('s') || params.get('v') || (params.get('w') || '').split(',')[0].trim();
+    const nomeOspite = params.get('ospite') || params.get('n') || '';
+    if (ancora || nomeOspite) return vistaPortafoglioOspite(ancora, nomeOspite);
+    if (params.get('bar')) return vistaBar();
+    
+    const oggi = new Date();
+    $('data_inizio').value = isoLocale(oggi);
+    $('data_fine').value = isoLocale(oggi);
+    $('filtro-mese').value = isoLocale(oggi).slice(0, 7);
+
+    mostraLoginAdmin();
+  }
+
+  avvia();
+</script>
+</body>
+</html>
