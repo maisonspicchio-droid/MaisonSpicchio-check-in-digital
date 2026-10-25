@@ -1,0 +1,2128 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Maison Spicchio — Luxury Self Check-in</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        burgundy: {
+                            50: '#fdf6f7', 100: '#f9eaec', 200: '#f2d6db',
+                            500: '#9b2c3b', 600: '#84202e', 700: '#6d1723', 
+                            800: '#56101a', 900: '#3e0911', 950: '#270308',
+                        },
+                        gold: {
+                            50: '#fdfaf0', 100: '#fbf3db', 200: '#f6e4b2',
+                            400: '#e5c158', 500: '#d4af37', 600: '#b89428', 700: '#8c6f1a',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    boxShadow: {
+                        'glass': '0 8px 32px 0 rgba(114, 47, 55, 0.08)',
+                        'floating': '0 20px 40px -15px rgba(0, 0, 0, 0.12)'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Supabase JS Client & Google Fonts & Lucide Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            -webkit-tap-highlight-color: transparent; 
+            -webkit-text-size-adjust: 100%;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+        }
+        .glass-panel-dark {
+            background: rgba(39, 3, 8, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+        .hidden-section { display: none !important; }
+
+        .extra-checkbox:checked + .extra-card { 
+            border-color: #d4af37; 
+            background: linear-gradient(135deg, #fdfaf0 0%, #fbf3db 100%);
+            transform: translateY(-2px); 
+            box-shadow: 0 10px 25px -5px rgba(212, 175, 55, 0.25); 
+        }
+        .extra-card { transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+        
+        input:not([type="checkbox"]):not([type="file"]), select, textarea { 
+            transition: all 0.2s ease;
+            font-size: 15px !important;
+            min-height: 48px;
+            color: #1e293b !important;
+            background-color: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 0.875rem;
+            padding: 0.75rem 1rem;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #9b2c3b !important;
+            box-shadow: 0 0 0 4px rgba(155, 44, 59, 0.1) !important;
+            outline: none;
+        }
+        /* Stile per evidenziare i campi non validi quando si prova a inviare */
+        form:invalid button[type="button"].btn-submit-attempted ~ input:invalid,
+        form:invalid button[type="button"].btn-submit-attempted ~ select:invalid {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+        }
+
+        input[readonly] {
+            background-color: #f1f5f9 !important;
+            color: #64748b !important;
+            cursor: not-allowed;
+        }
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1.1rem;
+            padding-right: 2.75rem !important;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .native-date-overlay {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 36px;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 20;
+        }
+        .native-date-overlay::-webkit-calendar-picker-indicator {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        #sigCanvas { 
+            touch-action: none;
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 16px 16px;
+        }
+        .btn-busy { opacity: .7; pointer-events: none; cursor: wait; }
+        
+        .spinner { 
+            border: 2px solid rgba(255,255,255,0.3); 
+            border-radius: 50%; 
+            border-top: 2px solid white; 
+            width: 18px; 
+            height: 18px; 
+            animation: spin 0.8s linear infinite; 
+            display: none; 
+        }
+        .btn-busy .spinner { display: inline-block; }
+        .btn-busy .btn-icon { display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @keyframes marqueeScroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .marquee-track {
+            display: inline-block;
+            white-space: nowrap;
+            animation: marqueeScroll 25s linear infinite;
+        }
+        .marquee-container:hover .marquee-track {
+            animation-play-state: paused;
+        }
+        .safe-bottom-bar {
+            padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        #toastNotice {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen pb-44 selection:bg-burgundy-500 selection:text-white">
+
+    <div id="toastNotice" class="fixed top-5 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-semibold transition-all duration-300 opacity-0 pointer-events-none -translate-y-4">
+        <i id="toastIcon" data-lucide="info" class="w-5 h-5 shrink-0"></i>
+        <span id="toastMsg">Notifica</span>
+    </div>
+
+    <!-- Header Hero con Effetti Mesh Gradient e Badge Live -->
+    <div class="relative bg-gradient-to-b from-burgundy-950 via-burgundy-900 to-burgundy-800 text-white pt-12 pb-28 px-4 text-center rounded-b-[2.5rem] shadow-2xl border-b border-gold-500/20 overflow-hidden">
+        <div class="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px]"></div>
+        <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-gold-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col items-center">
+            <div class="inline-flex items-center gap-2.5 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-semibold text-gold-200 border border-white/15 mb-4 shadow-sm">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>Self Check-in Online • Napoli</span>
+            </div>
+
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-2">Maison Spicchio</h1>
+            <p class="text-gold-400 text-sm sm:text-base font-medium tracking-wide uppercase select-none opacity-90" data-i18n="subtitle">
+                Napoli • Check-in Digitale
+            </p>
+        </div>
+    </div>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative z-20">
+
+        <div id="topNavBar" class="flex justify-between items-center mb-6">
+            <button type="button" onclick="openAdminModal()" class="px-4 py-2 bg-white/95 text-burgundy-900 border border-burgundy-100 font-semibold rounded-2xl shadow-sm hover:shadow hover:bg-burgundy-50 text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 backdrop-blur-md active:scale-95">
+                <i data-lucide="lock" class="w-4 h-4 text-gold-600"></i>
+                <span>Admin</span>
+            </button>
+            <div id="langSelector" class="flex p-1 bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-slate-200/80">
+                <button type="button" data-lang="it" onclick="setLanguage('it')" class="lang-btn px-4 py-1.5 text-slate-700 font-bold rounded-xl text-xs sm:text-sm transition-all duration-200 bg-burgundy-700 text-white shadow-sm">🇮🇹 IT</button>
+                <button type="button" data-lang="en" onclick="setLanguage('en')" class="lang-btn px-4 py-1.5 text-slate-600 font-medium rounded-xl text-xs sm:text-sm hover:text-burgundy-900 transition-all duration-200">🇬🇧 EN</button>
+            </div>
+        </div>
+
+        <!-- SCHERMATA ACCESSO OSPITE (CODICE USA E GETTA) -->
+        <section id="guestLoginScreen" class="hidden-section glass-panel p-8 sm:p-12 rounded-3xl shadow-floating border border-slate-200/90 max-w-md mx-auto text-center mt-12 mb-20 relative z-20">
+            <div class="w-16 h-16 rounded-2xl bg-burgundy-50 text-burgundy-800 flex items-center justify-center mx-auto mb-5 shadow-sm border border-burgundy-100">
+                <i data-lucide="key-round" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-2xl font-extrabold text-slate-900 mb-2" data-i18n="guest_login_title">Accesso Ospiti</h2>
+            <p class="text-sm text-slate-500 mb-8" data-i18n="guest_login_sub">Inserisci il codice di accesso univoco fornito dall'host per avviare la registrazione.</p>
+            
+            <input type="text" id="guestAccessCodeInput" placeholder="es. MS-A1B2C" class="w-full text-center font-mono font-bold tracking-widest text-xl uppercase mb-4 py-4 rounded-2xl" oninput="this.value = this.value.toUpperCase()" onkeydown="if(event.key==='Enter') { event.preventDefault(); verificaCodiceOspite(); }">
+            
+            <p id="guestLoginErr" class="text-xs text-rose-600 font-semibold mb-5 hidden-section flex items-center justify-center gap-1">
+                <i data-lucide="alert-circle" class="w-4 h-4"></i> <span data-i18n="guest_login_err">Codice non valido o già utilizzato.</span>
+            </p>
+            
+            <button type="button" id="btnVerifyCode" onclick="verificaCodiceOspite()" class="w-full bg-burgundy-700 hover:bg-burgundy-800 text-white font-bold py-4 rounded-2xl shadow-md transition-all active:scale-95 flex justify-center items-center gap-2">
+                <span class="spinner"></span>
+                <span class="btn-icon" data-i18n="guest_login_btn">Verifica e Accedi</span> <i data-lucide="arrow-right" class="w-5 h-5 btn-icon"></i>
+            </button>
+        </section>
+
+        <!-- MODALE PASSWORD ADMIN -->
+        <div id="adminLoginModal" class="fixed inset-0 z-[70] bg-slate-900/60 hidden-section flex items-center justify-center p-4 backdrop-blur-md transition-all">
+            <div class="glass-panel rounded-3xl w-full max-w-sm p-7 shadow-2xl border border-white text-center transform transition-all animate-in fade-in zoom-in-95">
+                <div class="w-14 h-14 rounded-2xl bg-burgundy-50 text-burgundy-700 flex items-center justify-center mx-auto mb-4 shadow-sm border border-burgundy-100">
+                    <i data-lucide="shield-check" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-xl font-extrabold text-slate-900 mb-1">Area Riservata Host</h3>
+                <p class="text-xs text-slate-500 mb-5">Inserisci le credenziali di sicurezza</p>
+                
+                <div class="relative mb-3">
+                    <input type="password" id="adminPassInput" placeholder="Password Admin..." class="w-full text-center font-mono font-bold tracking-widest text-lg" onkeydown="if(event.key==='Enter') verifyAdminPassword()">
+                    <button type="button" onclick="toggleAdminPassword()" class="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-700 transition">
+                        <i id="eyeIcon" data-lucide="eye" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <p id="adminLoginErr" class="text-xs text-rose-600 font-semibold mb-3 hidden-section flex items-center justify-center gap-1">
+                    <i data-lucide="alert-circle" class="w-4 h-4"></i> Password errata, riprova.
+                </p>
+                <div class="grid grid-cols-2 gap-2 mt-4">
+                    <button type="button" onclick="closeAdminModal()" class="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition">Annulla</button>
+                    <button type="button" onclick="verifyAdminPassword()" class="py-3 px-4 rounded-xl bg-burgundy-700 hover:bg-burgundy-800 text-white font-bold text-xs shadow-md transition">Accedi</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AREA ADMIN HOST -->
+        <section id="adminArea" class="hidden-section glass-panel p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-200/80 mb-8">
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-6 border-b border-slate-200 pb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-burgundy-700 text-white flex items-center justify-center shadow-md"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></div>
+                    <div><h2 class="text-xl font-bold text-slate-900">Dashboard Host</h2><p class="text-xs text-slate-500">Gestione ospiti, keybox e parametri live</p></div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="previewSuccessFromAdmin()" class="text-xs sm:text-sm bg-gold-500 text-burgundy-950 px-4 py-2.5 rounded-xl hover:bg-gold-400 font-bold transition shadow-sm flex items-center gap-2"><i data-lucide="eye" class="w-4 h-4"></i> Anteprima Pagina Ospite</button>
+                    <button type="button" onclick="closeAdmin()" class="text-xs sm:text-sm bg-slate-100 text-slate-700 px-4 py-2.5 rounded-xl hover:bg-slate-200 font-semibold transition">Esci</button>
+                </div>
+            </div>
+            
+            <!-- Parametri Live -->
+            <div class="bg-gradient-to-br from-slate-50 to-white p-5 sm:p-6 rounded-2xl border border-slate-200 mb-8 space-y-5">
+                <div class="flex items-center gap-2 text-burgundy-900 font-bold text-sm uppercase tracking-wide"><i data-lucide="sliders" class="w-4 h-4 text-gold-600"></i><h3>Configurazione Smart Host</h3></div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Codice Key Box</label><input type="text" id="adminKeyBox" class="w-full font-mono font-bold text-burgundy-900 tracking-wider" value="081"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Nome Wi-Fi (SSID)</label><input type="text" id="adminWifiSsid" class="w-full font-medium" value="Maison Spicchio Guest"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Password Wi-Fi</label><input type="text" id="adminWifiPass" class="w-full font-mono font-bold text-emerald-700" value="napoli2026"></div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Regolamento / PDF "Leggi Importante"</label>
+                    <div class="flex flex-col sm:flex-row gap-2 items-center">
+                        <input type="file" id="adminPdfFile" accept="application/pdf" class="w-full text-xs text-slate-600 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-burgundy-700 file:text-white hover:file:bg-burgundy-800 transition cursor-pointer bg-slate-50 border border-slate-300 rounded-xl p-1">
+                        <button type="button" onclick="rimuoviPdfAdmin()" class="w-full sm:w-auto text-xs text-rose-600 hover:bg-rose-50 px-4 py-2.5 rounded-xl border border-rose-200 font-bold whitespace-nowrap transition">Rimuovi PDF</button>
+                    </div>
+                    <input type="url" id="adminPdfUrl" placeholder="Oppure incolla link URL esterno (https://...)" class="w-full mt-2.5 text-xs">
+                    <p id="pdfAdminStatus" class="text-xs text-emerald-700 font-semibold mt-2 hidden-section flex items-center gap-1.5"><i data-lucide="check-circle" class="w-4 h-4"></i> PDF configurato e attivo</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Avviso Scorrevole (Ticker)</label>
+                    <textarea id="adminTickerInput" rows="2" class="w-full text-sm" placeholder="Testo mostrato nel banner scorrevole post check-in..."></textarea>
+                </div>
+                
+                <!-- SEZIONE CODICI DI ACCESSO USA E GETTA -->
+                <div class="col-span-1 md:col-span-3 bg-white p-5 rounded-xl border border-slate-200 shadow-sm mt-4">
+                    <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-800 uppercase flex items-center gap-2">
+                                <i data-lucide="ticket" class="w-4 h-4 text-indigo-600"></i> Codici d'Accesso (Usa e Getta)
+                            </label>
+                            <p class="text-[11px] text-slate-500 mt-1">L'ospite dovrà inserire uno di questi codici per accedere. Dopo l'uso, il codice si autodistruggerà.</p>
+                        </div>
+                        <button type="button" onclick="generaCodiceAccesso()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm border border-indigo-200 active:scale-95">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Genera PIN
+                        </button>
+                    </div>
+                    <div id="adminAccessCodesList" class="flex flex-wrap gap-2 min-h-[40px] items-center">
+                        <!-- Qui compariranno i codici -->
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-2">
+                    <button type="button" onclick="salvaImpostazioniHost(true)" class="bg-burgundy-700 hover:bg-burgundy-800 text-white font-bold px-6 py-3 rounded-xl text-sm shadow-md transition-all flex items-center gap-2 active:scale-95"><i data-lucide="save" class="w-4 h-4"></i> Salva e Pubblica</button>
+                </div>
+            </div>
+
+            <!-- Tabella Check-in -->
+            <div class="mb-4 flex flex-wrap justify-between items-center gap-2">
+                <div>
+                    <h3 class="font-bold text-slate-900 text-base">Registro Check-in & Schedine Questura</h3>
+                    <p class="text-xs text-slate-500">Esporta i dati per Alloggiati Web, scarica ricevute o effettua un backup completo.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <input type="file" id="importCsvInput" accept=".csv" class="hidden-section" onchange="importaBackupCSV(event)">
+                    <button type="button" onclick="document.getElementById('importCsvInput').click()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 border border-indigo-200 shadow-sm active:scale-95">
+                        <i data-lucide="upload-cloud" class="w-4 h-4"></i> Importa CSV
+                    </button>
+                    <button type="button" onclick="esportaBackupCSV()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 border border-emerald-200 shadow-sm active:scale-95">
+                        <i data-lucide="download-cloud" class="w-4 h-4"></i> Backup CSV
+                    </button>
+                    <button type="button" onclick="fetchCheckins()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 shadow-sm border border-slate-200 active:scale-95">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> Ricarica
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-50/80 text-slate-600 border-b border-slate-200 text-xs uppercase tracking-wider font-bold">
+                            <th class="p-3.5">Arrivo</th><th class="p-3.5">Ospite Principale</th><th class="p-3.5">Tassa Sogg.</th><th class="p-3.5">Stato Saldo</th><th class="p-3.5 text-center">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminTableBody" class="divide-y divide-slate-100">
+                        <tr><td colspan="5" class="p-8 text-center text-slate-400">Caricamento ospiti in corso...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SCHERMATA SUCCESS POST CHECK-IN -->
+        <section id="successScreen" class="hidden-section glass-panel p-6 sm:p-10 rounded-3xl shadow-floating border border-gold-200/60 text-center relative overflow-hidden mb-12">
+            <div id="adminReturnBanner" class="hidden-section mb-6 bg-slate-900 text-white p-3.5 rounded-2xl flex justify-between items-center shadow-lg">
+                <span class="text-xs font-semibold flex items-center gap-2 text-gold-300"><i data-lucide="eye" class="w-4 h-4"></i> Modalità Simulazione / Anteprima Admin</span>
+                <button type="button" onclick="returnToAdminFromSuccess()" class="bg-gold-500 text-burgundy-950 font-bold text-xs px-3.5 py-1.5 rounded-xl hover:bg-gold-400 transition">Torna al Pannello</button>
+            </div>
+            <div class="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-4 py-1.5 rounded-full text-xs font-bold mb-4">
+                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+                <span>Check-in Registrato con Successo</span>
+            </div>
+            <h2 id="successTitle" class="text-2xl sm:text-4xl font-extrabold text-burgundy-900 mb-2" data-i18n="done_title">Ti diamo il Benvenuto!</h2>
+            <p id="successSubtext" class="text-slate-600 mb-6 text-sm sm:text-base max-w-lg mx-auto" data-i18n="done_text">I tuoi dati sono stati acquisiti in conformità con le norme vigenti. Di seguito trovi le informazioni per l'accesso.</p>
+            <div class="bg-rose-50/80 border border-rose-200 rounded-2xl p-4 sm:p-5 my-5 text-left flex items-start gap-3.5 shadow-sm">
+                <div class="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm"><i data-lucide="shield-alert" class="w-5 h-5"></i></div>
+                <div><h4 class="text-xs font-extrabold text-rose-950 uppercase tracking-wide">Disposizioni di Pubblica Sicurezza</h4><p class="text-xs text-rose-800 mt-0.5 leading-relaxed font-medium">È categoricamente vietato l'accesso o il pernottamento a soggetti non preventivamente identificati e registrati. Qualsiasi violazione sarà immediatamente notificata alle autorità.</p></div>
+            </div>
+            <div class="marquee-container my-4 overflow-hidden rounded-2xl bg-gradient-to-r from-burgundy-950 via-burgundy-900 to-burgundy-950 text-gold-200 py-3 px-4 shadow-sm border border-gold-500/30 flex items-center">
+                <div class="z-10 bg-burgundy-950/90 backdrop-blur-sm text-gold-400 text-xs font-bold uppercase tracking-wider pr-3 flex items-center gap-1.5 shrink-0"><i data-lucide="bell" class="w-3.5 h-3.5"></i> Info Host:</div>
+                <div class="overflow-hidden w-full relative"><div id="liveTickerText" class="marquee-track text-xs sm:text-sm font-medium tracking-wide text-white">Benvenuti a Maison Spicchio! Per qualsiasi esigenza siamo a vostra disposizione su WhatsApp. Buona permanenza a Napoli!</div></div>
+            </div>
+            <div class="bg-gradient-to-br from-amber-50/90 to-amber-100/40 border border-amber-200/90 rounded-3xl p-5 sm:p-6 my-6 text-left shadow-sm">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div class="flex items-start gap-3.5"><div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-800 flex items-center justify-center shrink-0 border border-amber-300"><i data-lucide="coins" class="w-6 h-6"></i></div>
+                    <div><p class="text-xs font-bold text-amber-900 uppercase tracking-wider">Imposta di Soggiorno Comunale</p><p class="text-xs text-amber-800/90 mt-0.5 leading-relaxed font-medium">Quota stabilita dal Comune di Napoli di 6,00€/notte per persona. Ti preghiamo di depositare l'importo esatto in <b>contanti</b> all'interno della Key Box.</p></div></div>
+                    <div class="bg-white px-6 py-3 rounded-2xl border border-amber-300/80 shadow-sm text-center w-full sm:w-auto shrink-0"><span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Totale da Versare</span><span id="displayTaxDue" class="text-2xl font-black text-amber-900 font-mono">0€</span></div>
+                </div>
+                <div id="receiptSection" class="border-t border-amber-200/70 mt-4 pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-2"><span id="receiptBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs bg-white text-slate-600 border border-slate-200 shadow-sm"><i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i> Ricevuta in attesa di convalida host</span></div>
+                    <button type="button" id="btnScaricaRicevuta" onclick="scaricaRicevutaPdf()" class="hidden-section w-full sm:w-auto px-5 py-2.5 bg-burgundy-700 hover:bg-burgundy-800 text-white font-bold rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-95"><i data-lucide="download" class="w-4 h-4"></i> <span>Scarica Ricevuta PDF</span></button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-6 text-left">
+                <div class="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-sm flex flex-col justify-between hover:border-gold-400 transition-all">
+                    <div><div class="flex items-center justify-between mb-2"><span class="text-xs font-bold text-burgundy-800 uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="key" class="w-4 h-4 text-gold-500"></i> <span data-i18n="key_code">Codice Key Box</span></span><span class="text-[11px] font-semibold text-slate-400">All'ingresso</span></div>
+                    <div class="text-center py-4 bg-slate-50 border border-slate-100 rounded-2xl my-2"><span class="text-4xl font-extrabold tracking-[0.25em] text-burgundy-950 font-mono" id="displayKeyBox">081</span></div></div>
+                    <button type="button" onclick="copiaCodice()" class="mt-3 text-xs font-bold text-burgundy-800 bg-burgundy-50 hover:bg-burgundy-100 py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 w-full active:scale-95"><i data-lucide="copy" class="w-4 h-4"></i> <span data-i18n="copy_code">Copia Codice Key Box</span></button>
+                </div>
+                <div class="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-sm flex flex-col justify-between hover:border-gold-400 transition-all">
+                    <div><div class="flex items-center justify-between mb-2"><span class="text-xs font-bold text-gold-700 uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="wifi" class="w-4 h-4 text-gold-500"></i> Rete Wi-Fi</span><span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Alta Velocità</span></div>
+                    <div class="space-y-2 mt-3"><div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs"><span class="text-slate-500 font-medium">SSID:</span><b id="displayWifiSsid" class="text-slate-800 font-semibold font-mono">Maison Spicchio Guest</b></div>
+                    <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs"><span class="text-slate-500 font-medium">Password:</span><span class="font-mono font-bold text-emerald-700 text-sm" id="displayWifiPass">napoli2026</span></div></div></div>
+                    <button type="button" onclick="copiaWifi()" class="mt-3 text-xs font-bold text-slate-800 bg-gold-100 hover:bg-gold-200 py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 w-full active:scale-95"><i data-lucide="copy" class="w-4 h-4"></i> <span>Copia Password Wi-Fi</span></button>
+                </div>
+            </div>
+            <div id="pdfSection" class="my-5"><button type="button" onclick="apriGuidaPdf()" class="w-full py-4 px-6 bg-gradient-to-r from-burgundy-900 via-burgundy-800 to-burgundy-900 hover:opacity-95 text-white font-bold rounded-2xl shadow-lg transition flex items-center justify-center gap-2.5 text-sm border border-gold-500/30 active:scale-95"><i data-lucide="book-open" class="w-5 h-5 text-gold-400"></i><span class="uppercase tracking-wider">Leggi la Guida della Casa & Regole (PDF)</span></button></div>
+            <div class="bg-white border border-slate-200/90 rounded-3xl p-6 my-6 shadow-sm text-left">
+                <div class="flex justify-between items-start mb-4"><div class="flex items-center gap-3"><div class="w-11 h-11 rounded-2xl bg-burgundy-50 text-burgundy-800 flex items-center justify-center text-xl shrink-0"><i data-lucide="map-pin" class="w-5 h-5 text-burgundy-700"></i></div>
+                <div><h3 class="text-base font-extrabold text-slate-900">Maison Spicchio Napoli</h3><p class="text-xs font-bold text-slate-700 mt-0.5">VICO I GAGLIARDI, 2 - 80135 NAPOLI</p><p class="text-xs font-extrabold text-burgundy-700 flex items-center gap-1 mt-0.5"><i data-lucide="building" class="w-3.5 h-3.5"></i> Secondo Piano (2° Piano)</p></div></div>
+                <button type="button" onclick="copiaIndirizzo()" class="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition shrink-0 flex items-center gap-1"><i data-lucide="copy" class="w-3.5 h-3.5"></i> Copia</button></div>
+                <a href="https://www.google.com/maps/search/?api=1&query=Vico+I+Gagliardi+2+80135+Napoli" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-2 bg-slate-900 hover:bg-black text-white font-bold py-3.5 px-5 rounded-2xl shadow-md transition text-xs sm:text-sm active:scale-95"><i data-lucide="navigation" class="w-4 h-4 text-gold-400"></i><span>Avvia Navigazione su Google Maps</span></a>
+            </div>
+            <div class="bg-white border border-slate-200/80 rounded-3xl p-5 my-6 shadow-sm text-left flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-3"><div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><i data-lucide="message-circle" class="w-6 h-6"></i></div>
+                <div><p class="text-xs font-bold text-slate-900">Assistenza & Concierge Host</p><p class="text-xs text-slate-500 font-mono">+39 350 8881514</p></div></div>
+                <a href="https://wa.me/393508881514" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto text-center bg-[#25D366] hover:bg-[#20bd5a] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-1.5"><i data-lucide="send" class="w-3.5 h-3.5"></i> Contatta su WhatsApp</a>
+            </div>
+            <div class="mt-8"><button type="button" onclick="newCheckin()" class="text-slate-500 hover:text-slate-900 text-xs font-bold uppercase tracking-wider underline transition" data-i18n="new_checkin">Effettua un altro check-in</button></div>
+        </section>
+
+        <!-- FORM CHECK-IN PRINCIPALE -->
+        <form id="checkinForm" class="space-y-6 hidden-section" novalidate>
+
+            <!-- Card Avviso Legale & Polizia -->
+            <div class="glass-panel border-l-4 border-l-rose-500 p-4 sm:p-5 rounded-2xl shadow-sm text-left flex items-start gap-3.5">
+                <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center shrink-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-xs font-extrabold text-rose-900 uppercase tracking-wide">Identificazione Obbligatoria (T.U.L.P.S.)</h3>
+                    <p class="text-xs text-rose-800/90 mt-0.5 leading-relaxed font-medium">
+                        Per disposizioni dell'Autorità di Pubblica Sicurezza italiana, ciascun ospite deve registrarsi con un documento valido. <b>Tutti i campi contrassegnati sono obbligatori.</b>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Ospite Principale -->
+            <section class="glass-panel p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200/90 relative">
+                <div class="flex items-center gap-3.5 mb-6 border-b border-slate-100 pb-4">
+                    <div class="w-10 h-10 rounded-xl bg-burgundy-50 text-burgundy-800 flex items-center justify-center shrink-0">
+                        <i data-lucide="user-check" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-burgundy-950" data-i18n="lead_guest">Ospite Principale (Capogruppo)</h2>
+                        <p class="text-xs text-slate-500">Intestatario della prenotazione e firmatario</p>
+                    </div>
+                </div>
+                
+                <div id="leadGuest" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5"></div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mt-5 border-t border-slate-100 pt-5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                            <span data-i18n="phone">Numero di Cellulare</span> <span class="text-rose-600">*</span>
+                        </label>
+                        <input type="tel" id="cellulare" inputmode="tel" placeholder="+39 340 0000000" autocomplete="tel" class="w-full" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                            <span data-i18n="email">Indirizzo Email</span> <span class="text-rose-600">*</span>
+                        </label>
+                        <input type="email" id="email" inputmode="email" autocomplete="email" placeholder="nome@esempio.com" class="w-full" required>
+                    </div>
+                    
+                    <!-- FOTO DOCUMENTO: FRONTE & RETRO (Opzionale) -->
+                    <div class="md:col-span-2 bg-slate-50/70 p-5 rounded-2xl border border-slate-200/80 mt-2 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                                    <i data-lucide="camera" class="w-4 h-4 text-burgundy-700"></i>
+                                    Scansione Documento Ospite (Opzionale)
+                                </label>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Se desideri, puoi acquisire il fronte e retro per velocizzare le pratiche</p>
+                            </div>
+                            <span class="text-[10px] font-bold bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-full uppercase">Crittografato</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Fronte -->
+                            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <span class="text-xs font-bold text-slate-700 uppercase block mb-1">1. Foto Fronte Documento</span>
+                                    <input type="file" id="foto_fronte_cam" accept="image/*" capture="environment" class="hidden">
+                                    <input type="file" id="foto_fronte_file" accept="image/*,application/pdf" class="hidden">
+                                    <div class="grid grid-cols-2 gap-2 mt-2">
+                                        <button type="button" onclick="document.getElementById('foto_fronte_cam').click()" class="py-2.5 px-3 bg-burgundy-700 hover:bg-burgundy-800 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center gap-1.5">
+                                            <i data-lucide="camera" class="w-3.5 h-3.5"></i> Scatta
+                                        </button>
+                                        <button type="button" onclick="document.getElementById('foto_fronte_file').click()" class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5">
+                                            <i data-lucide="image" class="w-3.5 h-3.5"></i> Galleria
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="previewFronteBox" class="hidden-section mt-3 flex items-center gap-3 pt-3 border-t border-slate-100">
+                                    <img id="previewFronteImg" class="w-14 h-14 object-cover rounded-xl border border-slate-200 shadow-sm">
+                                    <div class="flex-1 text-xs">
+                                        <span class="font-bold text-emerald-700 flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5"></i> Fronte Pronto</span>
+                                        <button type="button" onclick="rimuoviFronte()" class="text-rose-600 hover:underline text-[11px] font-semibold mt-1">Rimuovi</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Retro -->
+                            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <span class="text-xs font-bold text-slate-700 uppercase block mb-1">2. Foto Retro Documento</span>
+                                    <input type="file" id="foto_retro_cam" accept="image/*" capture="environment" class="hidden">
+                                    <input type="file" id="foto_retro_file" accept="image/*,application/pdf" class="hidden">
+                                    <div class="grid grid-cols-2 gap-2 mt-2">
+                                        <button type="button" onclick="document.getElementById('foto_retro_cam').click()" class="py-2.5 px-3 bg-burgundy-700 hover:bg-burgundy-800 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center gap-1.5">
+                                            <i data-lucide="camera" class="w-3.5 h-3.5"></i> Scatta
+                                        </button>
+                                        <button type="button" onclick="document.getElementById('foto_retro_file').click()" class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5">
+                                            <i data-lucide="image" class="w-3.5 h-3.5"></i> Galleria
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="previewRetroBox" class="hidden-section mt-3 flex items-center gap-3 pt-3 border-t border-slate-100">
+                                    <img id="previewRetroImg" class="w-14 h-14 object-cover rounded-xl border border-slate-200 shadow-sm">
+                                    <div class="flex-1 text-xs">
+                                        <span class="font-bold text-emerald-700 flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5"></i> Retro Pronto</span>
+                                        <button type="button" onclick="rimuoviRetro()" class="text-rose-600 hover:underline text-[11px] font-semibold mt-1">Rimuovi</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ospiti Aggiuntivi -->
+            <section class="glass-panel p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200/90">
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-10 h-10 rounded-xl bg-burgundy-50 text-burgundy-800 flex items-center justify-center shrink-0">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-burgundy-950" data-i18n="add_guests">Altri Componenti del Gruppo</h2>
+                            <p class="text-xs text-slate-500">Aggiungi familiari o compagni di viaggio</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addGuest()" id="btnAddGuest" class="bg-burgundy-50 hover:bg-burgundy-100 text-burgundy-800 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm border border-burgundy-200 flex items-center gap-1.5 shadow-sm transition active:scale-95">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i> <span data-i18n="btn_add_guest">Aggiungi Ospite (Max 4)</span>
+                    </button>
+                </div>
+                <div id="additionalGuestsContainer" class="space-y-5"></div>
+            </section>
+
+            <!-- Dettagli Soggiorno -->
+            <section class="glass-panel p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200/90">
+                <div class="flex items-center gap-3.5 mb-6 border-b border-slate-100 pb-4">
+                    <div class="w-10 h-10 rounded-xl bg-burgundy-50 text-burgundy-800 flex items-center justify-center shrink-0">
+                        <i data-lucide="calendar" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-burgundy-950" data-i18n="stay">Dettagli del Soggiorno</h2>
+                        <p class="text-xs text-slate-500">Date, orari e preferenze</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                            <span data-i18n="checkin_date">Data di Arrivo</span> <span class="text-rose-600">*</span>
+                        </label>
+                        <div class="relative flex items-center">
+                            <input type="text" id="data_arrivo" inputmode="numeric" maxlength="10" placeholder="GG/MM/AAAA" oninput="handleDateMask(this, event)" class="w-full pr-12 font-medium font-mono" required>
+                            <span class="absolute right-3.5 text-slate-400 pointer-events-none"><i data-lucide="calendar-days" class="w-5 h-5"></i></span>
+                            <input type="date" id="data_arrivo_picker" class="native-date-overlay" tabindex="-1" onchange="syncPickerToText(this, 'data_arrivo')">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                            <span data-i18n="days">Numero Notti</span> <span class="text-rose-600">*</span>
+                        </label>
+                        <input type="number" id="giorni_permanenza" inputmode="numeric" min="1" max="60" placeholder="es. 3" class="w-full font-medium" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                            <span data-i18n="checkout_date">Data di Partenza Prevista</span>
+                        </label>
+                        <input type="text" id="data_partenza" readonly class="w-full font-mono font-medium" placeholder="Calcolata in automatico">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                            <span data-i18n="arrival_time">Orario Previsto di Arrivo (Dalle 14:30)</span> <span class="text-rose-600">*</span>
+                        </label>
+                        <input type="time" id="ora_arrivo" min="14:30" class="w-full font-medium" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                            <span data-i18n="breakfast">Servizio Colazione</span> <span class="text-rose-600">*</span>
+                        </label>
+                        <select id="colazione" class="w-full font-medium" required>
+                            <option value="Inclusa" data-i18n="bf_incl">☕ Inclusa nella prenotazione</option>
+                            <option value="No" data-i18n="bf_no">❌ No, grazie</option>
+                            <option value="Acquista ora" data-i18n="bf_buy">🥐 Acquista ora (6€ / giorno a persona)</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">
+                            <span data-i18n="tax">Imposta di Soggiorno</span>
+                            <span class="text-amber-800 font-bold lowercase text-[11px]">(6€ a notte per ospite)</span>
+                        </label>
+                        <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-center justify-between">
+                            <div class="text-xs text-amber-950 font-medium">
+                                <span class="font-bold block">Pagamento in Contanti</span>
+                                <span id="taxCalcDetail" class="text-[11px] text-amber-800">1 ospite × 0 notti</span>
+                            </div>
+                            <span id="taxTotalPreview" class="text-lg font-black text-amber-900 bg-white px-3 py-1 rounded-xl border border-amber-200 shadow-sm font-mono">0€</span>
+                        </div>
+                    </div>
+
+                    <!-- Note (Opzionale) -->
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide" data-i18n="notes">Richieste Speciali, Orari Particolari o Allergie (Opzionale)</label>
+                        <textarea id="note" rows="3" maxlength="500" placeholder="Inserisci qui eventuali dettagli utili per l'host..." class="w-full"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Servizi Extra & Esperienze VIP -->
+            <section class="glass-panel p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200/90">
+                <div class="flex items-center gap-3.5 mb-5 border-b border-slate-100 pb-4">
+                    <div class="w-10 h-10 rounded-xl bg-gold-50 text-gold-600 flex items-center justify-center shrink-0">
+                        <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-burgundy-950" data-i18n="extras">Servizi Extra & Esperienze VIP</h2>
+                        <p class="text-xs text-slate-500">Personalizza il tuo soggiorno napoletano</p>
+                    </div>
+                </div>
+                <div id="extrasGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3"></div>
+            </section>
+
+            <!-- Firma Digitale e Consensi -->
+            <section class="glass-panel p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200/90">
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <label class="block text-sm font-extrabold text-burgundy-950">
+                            <span data-i18n="signature">Firma Digitale dell'Ospite</span> <span class="text-rose-600">*</span>
+                        </label>
+                        <p class="text-xs text-slate-500">Disegna la tua firma sullo schermo con il dito o mouse</p>
+                    </div>
+                    <button type="button" onclick="clearSignature()" class="text-xs font-bold text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-slate-200 px-3.5 py-1.5 rounded-xl transition flex items-center gap-1" data-i18n="clear">
+                        <i data-lucide="eraser" class="w-3.5 h-3.5"></i> Cancella
+                    </button>
+                </div>
+                
+                <canvas id="sigCanvas" class="w-full h-48 bg-white border-2 border-dashed border-slate-300 rounded-2xl shadow-inner cursor-crosshair"></canvas>
+
+                <div class="flex items-start gap-3.5 mt-6 mb-6 bg-burgundy-50/50 p-4 sm:p-5 rounded-2xl border border-burgundy-100">
+                    <input type="checkbox" id="consenso_dati" required class="w-5 h-5 mt-0.5 text-burgundy-700 bg-white border-slate-300 rounded-lg focus:ring-burgundy-500 cursor-pointer shrink-0">
+                    <label for="consenso_dati" class="text-xs sm:text-sm text-burgundy-950 leading-relaxed cursor-pointer font-medium">
+                        <span data-i18n="privacy">Dichiaro di aver preso visione delle condizioni. Acconsento al trattamento dei dati personali (GDPR) e dichiaro sotto la mia responsabilità di non consentire l'accesso alla struttura a persone non registrate.</span> <span class="text-rose-600 font-bold">*</span>
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button type="button" id="btnWa" onclick="submitData('whatsapp')" class="group flex justify-center items-center gap-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white py-4 px-5 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 transition-all duration-200 active:scale-95">
+                        <span class="spinner"></span>
+                        <i data-lucide="message-circle" class="w-5 h-5 btn-icon"></i>
+                        <span data-i18n="save_wa">Invia Check-in via WhatsApp</span>
+                    </button>
+                    <button type="button" id="btnEmail" onclick="submitData('email')" class="group flex justify-center items-center gap-2.5 bg-slate-900 hover:bg-black text-white py-4 px-5 rounded-2xl font-bold shadow-lg shadow-slate-900/20 transition-all duration-200 active:scale-95">
+                        <span class="spinner"></span>
+                        <i data-lucide="mail" class="w-5 h-5 btn-icon"></i>
+                        <span data-i18n="save_email">Invia Check-in via Email</span>
+                    </button>
+                </div>
+                
+                <div id="statusMsg" class="mt-6 text-center text-sm p-4 rounded-2xl hidden-section font-semibold" role="status"></div>
+            </section>
+        </form>
+    </main>
+
+    <!-- Barra di Riepilogo Fluttuante in Basso -->
+    <aside id="bottomSummaryBar" class="hidden-section fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 shadow-floating z-50 safe-bottom-bar">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 pt-3 flex justify-between items-center text-sm">
+            <div class="flex flex-col items-start gap-1">
+                <div class="text-slate-600 font-semibold flex items-center gap-2 text-xs">
+                    <span class="bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200"><span data-i18n="guests_n">Ospiti</span>: <b id="sumGuests" class="text-slate-900">1</b></span>
+                    <span class="bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200"><span data-i18n="nights_n">Notti</span>: <b id="sumNights" class="text-slate-900">–</b></span>
+                    <span class="bg-amber-100 text-amber-900 px-2.5 py-1 rounded-lg border border-amber-200 font-bold">Tassa: <b id="sumTax">0€</b></span>
+                </div>
+                <button type="button" onclick="showSummary()" class="text-xs font-bold text-burgundy-700 hover:text-burgundy-900 flex items-center gap-1.5 transition mt-0.5">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i> <span data-i18n="summary">Visualizza Riepilogo Dati</span>
+                </button>
+            </div>
+            <div class="text-right flex flex-col items-end">
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-400 text-xs font-bold uppercase tracking-wider" data-i18n="total_est">Extra & Servizi</span>
+                    <b id="sumTotal" class="text-burgundy-900 text-xl font-black font-mono">0€</b>
+                </div>
+                <div id="bfBreakdown" class="text-[11px] font-bold text-gold-700 hidden-section bg-gold-50 px-2 py-0.5 rounded-md border border-gold-200">
+                    (di cui <span id="bfAmount">0</span>€ colazione)
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Modale Scheda Dati / Riepilogo -->
+    <div id="summaryModal" class="fixed inset-0 z-[80] bg-slate-950/60 hidden-section flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-burgundy-100 text-burgundy-800 flex items-center justify-center">
+                        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-900" id="modalTitle">Riepilogo Scheda Ospiti</h3>
+                </div>
+                <button type="button" onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto bg-white flex-1" id="modalBody"></div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
+                <button type="button" onclick="printModal()" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold transition border border-slate-300 shadow-sm flex items-center gap-2 text-xs">
+                    <i data-lucide="printer" class="w-4 h-4"></i> <span data-i18n="print">Stampa Schedina</span>
+                </button>
+                <button type="button" onclick="closeModal()" class="px-6 py-2.5 rounded-xl bg-burgundy-700 hover:bg-burgundy-800 text-white font-bold transition shadow-sm text-xs" data-i18n="close">
+                    Chiudi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Conferma Eliminazione Admin -->
+    <div id="deleteConfirmModal" class="fixed inset-0 z-[90] bg-slate-950/60 hidden-section flex items-center justify-center p-4 backdrop-blur-md transition-all">
+        <div class="glass-panel rounded-3xl w-full max-w-sm p-7 shadow-2xl border border-white text-center transform transition-all animate-in fade-in zoom-in-95">
+            <div class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4 shadow-sm border border-rose-100">
+                <i data-lucide="alert-triangle" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-extrabold text-slate-900 mb-2">Elimina Registrazione</h3>
+            <p class="text-xs text-slate-500 mb-6">Sei sicuro di voler eliminare definitivamente questo check-in? I dati verranno persi e l'azione non è reversibile.</p>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button type="button" onclick="closeDeleteModal()" class="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition">Annulla</button>
+                <button type="button" onclick="executeDeleteCheckin()" class="py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Conferma
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inizializza Icone Lucide
+        function refreshIcons() {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
+
+        // Sistema di Toast Moderno
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toastNotice');
+            const msgEl = document.getElementById('toastMsg');
+            const iconEl = document.getElementById('toastIcon');
+            
+            msgEl.textContent = message;
+            toast.className = 'fixed top-5 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-xs sm:text-sm font-bold transition-all duration-300 transform opacity-100 translate-y-0 ';
+            
+            if (type === 'success') {
+                toast.className += 'bg-emerald-900 text-white border border-emerald-700';
+                iconEl.setAttribute('data-lucide', 'check-circle-2');
+            } else if (type === 'error') {
+                toast.className += 'bg-rose-900 text-white border border-rose-700';
+                iconEl.setAttribute('data-lucide', 'alert-circle');
+            } else {
+                toast.className += 'bg-slate-900 text-white border border-slate-700';
+                iconEl.setAttribute('data-lucide', 'info');
+            }
+            refreshIcons();
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+            }, 3500);
+        }
+
+        // ================= CONFIGURAZIONE =================
+        const CODICE_SEGRETO_ADMIN_ENCODED = 'YWRtaW4xMjM0NQ=='; // admin12345
+        
+        const SUPABASE_URL = 'https://rkghhvpmfuoqwzxhbham.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrZ2hodnBtZnVvcXd6eGhiaGFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NjI4ODksImV4cCI6MjEwODIzODg4OX0.Qh7RkQVAlLU4A3Me6KIQARBxiGpIMb8bkA6ZyQI5uFE';
+        
+        const WHATSAPP_PHONE = '393508881514';         
+        const HOST_EMAIL = 'maisonspicchio@gmail.com';
+        const BREAKFAST_PRICE = 6;                     
+        const CITY_TAX_PER_PERSON_PER_NIGHT = 6; 
+        const MAX_GUESTS = 5;
+
+        let db = null;
+        try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { console.error(e); }
+
+        let hostConfig = {
+            keyBoxCode: '081',
+            wifiSsid: 'Maison Spicchio Guest',
+            wifiPass: 'napoli2026',
+            pdfUrl: '',
+            tickerText: 'Benvenuti a Maison Spicchio! Per qualsiasi esigenza siamo a vostra disposizione su WhatsApp. Buona permanenza a Napoli!',
+            accessCodes: ''
+        };
+
+        let validAccessCodes = [];
+        let guestSessionCode = null;
+
+        const EXTRAS = [
+            { id: 'late_checkout', icon: 'clock', price: 15, it: 'Check-out tardivo (Max 13:00)', en: 'Late Check-out (Max 1:00 PM)', label: 'Late Check-out' },
+            { id: 'bagagli', icon: 'luggage', price: 7, qty: true, it: 'Deposito Bagagli', en: 'Luggage Storage', label: 'Deposito Bagagli', unit: '€/valigia' },
+            { id: 'pizza', icon: 'utensils', price: 35, it: 'Box Pizza Tradizionale', en: 'Traditional Pizza Box', label: 'Box Pizza' },
+            { id: 'tarallo', icon: 'package', price: 30, it: 'Box Taralli Napoletani', en: 'Neapolitan Taralli Box', label: 'Box Tarallo' },
+            { id: 'prosecco', icon: 'wine', price: 75, it: 'Bottiglia Prosecco DOC', en: 'Prosecco DOC Bottle', label: 'Prosecco DOC' },
+            { id: 'rose', icon: 'flower-2', price: 80, it: 'Fascio di Rose Fresche', en: 'Bouquet of Fresh Roses', label: 'Fascio di Rose' },
+            { id: 'champagne', icon: 'sparkles', price: 120, it: "Champagne Francese", en: 'French Champagne', label: 'Champagne' },
+            { id: 'vino_rosso', icon: 'glass-water', price: 60, it: 'Vino Rosso Pregiato', en: 'Fine Red Wine', label: 'Vino Rosso' },
+            { id: 'vino_bianco', icon: 'cup-soda', price: 60, it: 'Vino Bianco Freddo', en: 'Chilled White Wine', label: 'Vino Bianco' },
+            { id: 'colazione_letto', icon: 'coffee', price: 90, it: 'Colazione Servita a Letto', en: 'Breakfast in Bed', label: 'Colazione a letto' }
+        ];
+
+        const dict = {
+            it: {
+                subtitle: 'Napoli • Check-in Digitale', lead_guest: 'Ospite Principale (Capogruppo)', add_guests: 'Altri Componenti del Gruppo',
+                btn_add_guest: 'Aggiungi Ospite (Max 4)', stay: 'Dettagli del Soggiorno', extras: 'Servizi Extra & Esperienze VIP',
+                phone: 'Numero di Cellulare', email: 'Indirizzo Email',
+                checkin_date: 'Data di Arrivo (GG/MM/AAAA)', checkout_date: 'Data di Partenza Prevista', days: 'Numero Notti',
+                arrival_time: 'Orario Previsto di Arrivo (Dalle 14:30)', breakfast: 'Servizio Colazione', tax: 'Imposta di Soggiorno',
+                bf_incl: '☕ Inclusa nella prenotazione', bf_no: '❌ No, grazie', bf_buy: '🥐 Acquista ora (6€ / giorno a persona)',
+                notes: 'Richieste Speciali, Orari Particolari o Allergie (Opzionale)', signature: "Firma Digitale dell'Ospite", clear: 'Cancella',
+                privacy: "Dichiaro di aver preso visione delle condizioni. Acconsento al trattamento dei dati personali (GDPR) e dichiaro sotto la mia responsabilità di non consentire l'accesso alla struttura a persone non registrate.",
+                save_wa: 'Invia Check-in via WhatsApp', save_email: 'Invia Check-in via Email',
+                key_code: 'Codice Key Box', copy_code: 'Copia Codice Key Box',
+                guests_n: 'Ospiti', nights_n: 'Notti', total_est: 'Extra & Servizi',
+                summary: 'Visualizza Riepilogo Dati', close: 'Chiudi', print: 'Stampa Schedina',
+                done_title: 'Ti diamo il Benvenuto!', done_text: 'I tuoi dati sono stati acquisiti in conformità con le norme vigenti. Di seguito trovi le informazioni per l\'accesso.', new_checkin: 'Effettua un altro check-in',
+                f_nome: 'Nome', f_cognome: 'Cognome', f_sesso: 'Genere', f_nascita: 'Data di Nascita (GG/MM/AAAA)', f_luogo: 'Luogo di Nascita',
+                f_nazionalita: 'Nazionalità', f_tipodoc: 'Tipo di Documento', f_numdoc: 'Numero Documento', f_rilasciato: 'Rilasciato Da', f_scadenza: 'Scadenza (GG/MM/AAAA)',
+                select: 'Seleziona opzione...', male: 'Maschile (M)', female: 'Femminile (F)',
+                doc_id: "Carta d'Identità", doc_pass: 'Passaporto', doc_lic: 'Patente di Guida',
+                msg_limit: 'Capienza massima raggiunta (5 ospiti totali).',
+                msg_err: 'Errore durante il salvataggio: ', msg_sig: 'Inserisci la tua firma nel riquadro bianco prima di continuare.',
+                msg_time: 'L\'orario di check-in è previsto a partire dalle 14:30.',
+                msg_doc_exp: 'Documento scaduto o formato data non valido (GG/MM/AAAA).', msg_birth: 'Data di nascita non valida (formato GG/MM/AAAA).',
+                msg_checkin_date: 'Data di arrivo non valida (formato GG/MM/AAAA).',
+                msg_adult: "L'ospite principale deve essere obbligatoriamente maggiorenne.", msg_fix: 'Compila tutti i campi obbligatori contrassegnati in rosso.', sending: 'Trasmissione dati in corso...',
+                guest_login_title: 'Accesso Ospiti', guest_login_sub: 'Inserisci il codice di accesso univoco fornito dall\'host per avviare la registrazione.',
+                guest_login_err: 'Codice non valido o già utilizzato.', guest_login_btn: 'Verifica e Accedi'
+            },
+            en: {
+                subtitle: 'Napoli • Digital Check-in', lead_guest: 'Lead Guest Details', add_guests: 'Additional Guests',
+                btn_add_guest: 'Add Guest (Max 4)', stay: 'Stay Details', extras: 'VIP & Extra Services',
+                phone: 'Mobile Phone', email: 'Email Address',
+                checkin_date: 'Arrival Date (DD/MM/YYYY)', checkout_date: 'Departure Date', days: 'Number of Nights',
+                arrival_time: 'Estimated Arrival (from 14:30)', breakfast: 'Breakfast Service', tax: 'Tourist City Tax',
+                bf_incl: '☕ Included with room', bf_no: '❌ No, thanks', bf_buy: '🥐 Buy now (€6 / day per person)',
+                notes: 'Special requests / allergies (Optional)', signature: 'Guest Digital Signature', clear: 'Clear',
+                privacy: 'I consent to data processing (GDPR) and officially confirm no unregistered third parties will access the property.',
+                save_wa: 'Send Check-in WhatsApp', save_email: 'Send Check-in Email',
+                key_code: 'Key Box Code', copy_code: 'Copy Key Box Code',
+                guests_n: 'Guests', nights_n: 'Nights', total_est: 'Extras Total',
+                summary: 'View Summary', close: 'Close', print: 'Print Card',
+                done_title: 'Welcome to Naples!', done_text: 'Your registration was completed successfully. Access info is displayed below.', new_checkin: 'Start another check-in',
+                f_nome: 'First Name', f_cognome: 'Last Name', f_sesso: 'Gender', f_nascita: 'Date of Birth (DD/MM/YYYY)', f_luogo: 'Place of Birth',
+                f_nazionalita: 'Nationality', f_tipodoc: 'Document Type', f_numdoc: 'Document Number', f_rilasciato: 'Issued By', f_scadenza: 'Expiration (DD/MM/YYYY)',
+                select: 'Select an option...', male: 'Male (M)', female: 'Female (F)',
+                doc_id: 'National ID Card', doc_pass: 'Passport', doc_lic: "Driver's License",
+                msg_limit: 'Maximum room capacity reached (5 guests total).',
+                msg_err: 'Error saving data: ', msg_sig: 'Please sign in the box before submitting.',
+                msg_time: 'Check-in time is permitted from 14:30 onwards.',
+                msg_doc_exp: 'Document expired or invalid date format (DD/MM/YYYY).', msg_birth: 'Invalid birth date (use DD/MM/YYYY).',
+                msg_checkin_date: 'Invalid arrival date (use DD/MM/YYYY).',
+                msg_adult: 'Lead guest must be at least 18 years old.', msg_fix: 'Please complete all required fields highlighted.', sending: 'Transmitting data...',
+                guest_login_title: 'Guest Access', guest_login_sub: 'Enter the unique access code provided by the host to start registration.',
+                guest_login_err: 'Invalid or already used code.', guest_login_btn: 'Verify and Access'
+            }
+        };
+
+        let currentLang = (navigator.language || 'it').toLowerCase().startsWith('it') ? 'it' : 'en';
+        let guestCount = 1, guestIndex = 1;
+        const t = k => dict[currentLang][k] || k;
+        let globalCheckins = [];
+        let currentActiveCheckin = null;
+        let isAdminSession = false;
+
+        let fotoFronteBase64 = null;
+        let fotoRetroBase64 = null;
+
+        // ================= GESTIONE ACCESSO OSPITE (CODICE) =================
+        async function verificaCodiceOspite() {
+            const btn = document.getElementById('btnVerifyCode');
+            const inputEl = document.getElementById('guestAccessCodeInput');
+            const errEl = document.getElementById('guestLoginErr');
+            const code = inputEl.value.trim().toUpperCase();
+            
+            if(!code) return;
+
+            btn.classList.add('btn-busy');
+            errEl.classList.add('hidden-section');
+
+            try {
+                const { data } = await db.from('host_settings').select('*').eq('id', 'config_spicchio').single();
+                
+                if (data && data.access_codes) {
+                    const freshCodes = data.access_codes.split(',').filter(c => c.trim() !== '');
+                    
+                    if (freshCodes.includes(code)) {
+                        guestSessionCode = code;
+                        
+                        document.getElementById('guestLoginScreen').classList.add('hidden-section');
+                        document.getElementById('checkinForm').classList.remove('hidden-section');
+                        document.getElementById('bottomSummaryBar').classList.remove('hidden-section');
+                        
+                        // Inizializza i form solo ora che l'accesso è valido
+                        document.getElementById('leadGuest').innerHTML = guestFields(0);
+                        renderExtras();
+                        const tIso = todayISO();
+                        const arrivo = document.getElementById('data_arrivo');
+                        const arrivoPicker = document.getElementById('data_arrivo_picker');
+                        if (arrivo) arrivo.value = isoToDMY(tIso);
+                        if (arrivoPicker) {
+                            arrivoPicker.min = tIso;
+                            arrivoPicker.value = tIso;
+                        }
+                        document.getElementById('checkinForm').addEventListener('input', updateSummary);
+                        document.getElementById('checkinForm').addEventListener('change', updateSummary);
+                        resizeCanvas(true);
+                        
+                        showToast(currentLang === 'it' ? "Codice valido!" : "Valid code!", "success");
+                        btn.classList.remove('btn-busy');
+                        return;
+                    }
+                }
+                errEl.classList.remove('hidden-section');
+            } catch (e) {
+                showToast("Errore di connessione.", "error");
+            }
+            btn.classList.remove('btn-busy');
+        }
+
+        // ================= GESTIONE FOTO E LOGICA DI BASE =================
+        function processaFoto(file, callback) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const img = new Image();
+                img.onload = () => {
+                    const maxW = 1200;
+                    const scale = img.width > maxW ? maxW / img.width : 1;
+                    const cvs = document.createElement('canvas');
+                    cvs.width = img.width * scale;
+                    cvs.height = img.height * scale;
+                    cvs.getContext('2d').drawImage(img, 0, 0, cvs.width, cvs.height);
+                    callback(cvs.toDataURL('image/jpeg', 0.72));
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('foto_fronte_cam').addEventListener('change', e => {
+            processaFoto(e.target.files[0], res => {
+                fotoFronteBase64 = res;
+                document.getElementById('previewFronteImg').src = res;
+                document.getElementById('previewFronteBox').classList.remove('hidden-section');
+                showToast("Fronte documento caricato", "success");
+            });
+        });
+        document.getElementById('foto_fronte_file').addEventListener('change', e => {
+            processaFoto(e.target.files[0], res => {
+                fotoFronteBase64 = res;
+                document.getElementById('previewFronteImg').src = res;
+                document.getElementById('previewFronteBox').classList.remove('hidden-section');
+                showToast("Fronte documento caricato", "success");
+            });
+        });
+        function rimuoviFronte() {
+            fotoFronteBase64 = null;
+            document.getElementById('foto_fronte_cam').value = '';
+            document.getElementById('foto_fronte_file').value = '';
+            document.getElementById('previewFronteBox').classList.add('hidden-section');
+        }
+
+        document.getElementById('foto_retro_cam').addEventListener('change', e => {
+            processaFoto(e.target.files[0], res => {
+                fotoRetroBase64 = res;
+                document.getElementById('previewRetroImg').src = res;
+                document.getElementById('previewRetroBox').classList.remove('hidden-section');
+                showToast("Retro documento caricato", "success");
+            });
+        });
+        document.getElementById('foto_retro_file').addEventListener('change', e => {
+            processaFoto(e.target.files[0], res => {
+                fotoRetroBase64 = res;
+                document.getElementById('previewRetroImg').src = res;
+                document.getElementById('previewRetroBox').classList.remove('hidden-section');
+                showToast("Retro documento caricato", "success");
+            });
+        });
+        function rimuoviRetro() {
+            fotoRetroBase64 = null;
+            document.getElementById('foto_retro_cam').value = '';
+            document.getElementById('foto_retro_file').value = '';
+            document.getElementById('previewRetroBox').classList.add('hidden-section');
+        }
+
+        function todayISO() {
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function isoToDMY(iso) {
+            if (!iso) return '';
+            const parts = iso.slice(0, 10).split('-');
+            if (parts.length !== 3) return iso;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        function dmyToISO(dmy) {
+            if (!dmy) return null;
+            const m = dmy.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+            if (!m) return null;
+            const dd = parseInt(m[1], 10), mm = parseInt(m[2], 10), yyyy = parseInt(m[3], 10);
+            if (yyyy < 1900 || yyyy > 2100 || mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+            const dt = new Date(yyyy, mm - 1, dd);
+            if (dt.getFullYear() !== yyyy || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) return null;
+            return `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+        }
+
+        function handleDateMask(el, event) {
+            if (event && event.inputType === 'deleteContentBackward') return;
+            let digits = el.value.replace(/\D/g, '').slice(0, 8);
+            let formatted = '';
+            if (digits.length > 4) {
+                formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+            } else if (digits.length > 2) {
+                formatted = digits.slice(0, 2) + '/' + digits.slice(2);
+            } else {
+                formatted = digits;
+            }
+            el.value = formatted;
+
+            const picker = document.getElementById(el.id + '_picker');
+            const iso = dmyToISO(formatted);
+            if (picker && iso) picker.value = iso;
+
+            if (el.id === 'data_arrivo') updateSummary();
+        }
+
+        function syncPickerToText(picker, textId) {
+            const txt = document.getElementById(textId);
+            if (txt && picker.value) {
+                txt.value = isoToDMY(picker.value);
+                if (textId === 'data_arrivo') updateSummary();
+            }
+        }
+
+        const labelCls = 'block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide';
+
+        function guestFields(i) {
+            const fText = (key, id, extra = '') =>
+                `<div><label class="${labelCls}"><span data-i18n="${key}">${t(key)}</span> <span class="text-rose-600">*</span></label>
+                 <input type="text" id="${id}_${i}" class="w-full" required ${extra}></div>`;
+            
+            const fDateDMY = (key, id) =>
+                `<div><label class="${labelCls}"><span data-i18n="${key}">${t(key)}</span> <span class="text-rose-600">*</span></label>
+                 <div class="relative flex items-center">
+                    <input type="text" id="${id}_${i}" inputmode="numeric" maxlength="10" placeholder="GG/MM/AAAA" oninput="handleDateMask(this, event)" class="w-full pr-12 font-medium font-mono" required>
+                    <span class="absolute right-3.5 text-slate-400 pointer-events-none"><i data-lucide="calendar" class="w-4 h-4"></i></span>
+                    <input type="date" id="${id}_${i}_picker" class="native-date-overlay" tabindex="-1" onchange="syncPickerToText(this, '${id}_${i}')">
+                 </div></div>`;
+
+            const sel = (key, id, opts) =>
+                `<div><label class="${labelCls}"><span data-i18n="${key}">${t(key)}</span> <span class="text-rose-600">*</span></label>
+                 <select id="${id}_${i}" class="w-full font-medium" required>
+                 <option value="" disabled selected data-i18n="select">${t('select')}</option>${opts}</select></div>`;
+            return `
+                ${fText('f_nome', 'nome', 'autocomplete="given-name" placeholder="Mario"')}
+                ${fText('f_cognome', 'cognome', 'autocomplete="family-name" placeholder="Rossi"')}
+                ${sel('f_sesso', 'sesso', `<option value="M" data-i18n="male">${t('male')}</option><option value="F" data-i18n="female">${t('female')}</option>`)}
+                ${fDateDMY('f_nascita', 'data_nascita')}
+                ${fText('f_luogo', 'luogo_nascita', 'placeholder="es. Napoli o Stato estero"')}
+                ${fText('f_nazionalita', 'nazionalita', 'placeholder="es. ITALIANA"')}
+                <div class="md:col-span-2"><hr class="border-slate-100 my-1"></div>
+                ${sel('f_tipodoc', 'tipo_doc', `<option value="IDENT" data-i18n="doc_id">${t('doc_id')}</option><option value="PASSP" data-i18n="doc_pass">${t('doc_pass')}</option><option value="PATEN" data-i18n="doc_lic">${t('doc_lic')}</option>`)}
+                ${fText('f_numdoc', 'num_doc', 'maxlength="30" placeholder="es. CA00000AA"')}
+                ${fText('f_rilasciato', 'rilasciato_da', 'placeholder="es. Comune di Napoli"')}
+                ${fDateDMY('f_scadenza', 'scadenza_doc')}`;
+        }
+
+        function addGuest() {
+            if (guestCount >= MAX_GUESTS) { showToast(t('msg_limit'), 'error'); return; }
+            const i = guestIndex;
+            const html = `
+                <div class="bg-slate-50/90 border border-slate-200/80 p-5 sm:p-6 rounded-3xl relative transition-all" id="guest_${i}">
+                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-200">
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-burgundy-900 flex items-center gap-1.5">
+                            <i data-lucide="user" class="w-4 h-4 text-gold-600"></i> Ospite Aggiuntivo #${guestCount + 1}
+                        </span>
+                        <button type="button" onclick="removeGuest(${i})" class="text-rose-600 hover:text-white hover:bg-rose-600 rounded-xl px-3 py-1 text-xs font-bold transition flex items-center gap-1">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Rimuovi
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">${guestFields(i)}</div>
+                </div>`;
+            document.getElementById('additionalGuestsContainer').insertAdjacentHTML('beforeend', html);
+            guestCount++; guestIndex++;
+            updateAddBtn(); updateSummary(); refreshIcons();
+        }
+
+        function removeGuest(i) {
+            document.getElementById('guest_' + i)?.remove();
+            guestCount--; updateAddBtn(); updateSummary();
+        }
+
+        function updateAddBtn() {
+            document.getElementById('btnAddGuest').classList.toggle('opacity-50', guestCount >= MAX_GUESTS);
+        }
+
+        function renderExtras() {
+            document.getElementById('extrasGrid').innerHTML = EXTRAS.map(e => `
+                <label class="relative cursor-pointer group select-none">
+                    <input type="checkbox" id="extra_${e.id}" class="extra-cb extra-checkbox sr-only" data-id="${e.id}">
+                    <div class="extra-card bg-white border border-slate-200 rounded-2xl p-3 hover:border-gold-400 flex flex-col items-center text-center h-full justify-between shadow-sm">
+                        <div class="w-10 h-10 rounded-xl bg-slate-50 text-burgundy-800 flex items-center justify-center mb-1 group-hover:bg-gold-50 group-hover:text-gold-700 transition">
+                            <i data-lucide="${e.icon}" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-xs font-bold leading-snug px-0.5 text-slate-800" data-extra-label="${e.id}">${e[currentLang]}</span>
+                        <span class="text-burgundy-900 text-xs font-extrabold mt-2 bg-burgundy-50 px-2.5 py-1 rounded-lg font-mono">${e.price}${e.qty ? e.unit : '€'}</span>
+                        ${e.qty ? `<input type="number" id="extra_${e.id}_qty" inputmode="numeric" min="1" max="10" value="1" class="mt-2 w-14 p-1 text-center border border-slate-300 rounded-lg outline-none hidden-section text-xs font-bold" onclick="event.stopPropagation()">` : ''}
+                    </div>
+                </label>`).join('');
+            EXTRAS.filter(e => e.qty).forEach(e => {
+                document.getElementById('extra_' + e.id).addEventListener('change', ev => {
+                    document.getElementById(`extra_${e.id}_qty`).classList.toggle('hidden-section', !ev.target.checked);
+                    updateSummary();
+                });
+            });
+            refreshIcons();
+        }
+
+        function calcExtras() {
+            let items = [], total = 0;
+            EXTRAS.forEach(e => {
+                if (document.getElementById('extra_' + e.id)?.checked) {
+                    const q = e.qty ? Math.max(1, Math.min(10, parseInt(document.getElementById(`extra_${e.id}_qty`).value) || 1)) : 1;
+                    items.push(e.qty ? `${e.label} (x${q})` : e.label);
+                    total += e.price * q;
+                }
+            });
+            return { items, total };
+        }
+
+        function nights() { const n = parseInt(document.getElementById('giorni_permanenza').value); return n > 0 ? n : 0; }
+        
+        function calcCityTax() {
+            return CITY_TAX_PER_PERSON_PER_NIGHT * guestCount * nights();
+        }
+
+        function updateSummary() {
+            const n = nights();
+            let total = calcExtras().total;
+            let bfCost = 0;
+            const colazioneScelta = document.getElementById('colazione').value;
+            const bfBreakdown = document.getElementById('bfBreakdown');
+            const bfAmount = document.getElementById('bfAmount');
+
+            if (colazioneScelta === 'Acquista ora') {
+                bfCost = BREAKFAST_PRICE * guestCount * (n || 1);
+                total += bfCost;
+                bfAmount.textContent = bfCost;
+                bfBreakdown.classList.remove('hidden-section');
+            } else {
+                bfBreakdown.classList.add('hidden-section');
+            }
+
+            const cityTax = calcCityTax();
+            document.getElementById('taxTotalPreview').textContent = cityTax + '€';
+            document.getElementById('taxCalcDetail').textContent = `${guestCount} ${guestCount === 1 ? 'ospite' : 'ospiti'} × ${n} ${n === 1 ? 'notte' : 'notti'} (${CITY_TAX_PER_PERSON_PER_NIGHT}€/notte)`;
+            document.getElementById('displayTaxDue').textContent = cityTax + '€';
+            document.getElementById('sumTax').textContent = cityTax + '€';
+
+            document.getElementById('sumGuests').textContent = guestCount;
+            document.getElementById('sumNights').textContent = n || '–';
+            document.getElementById('sumTotal').textContent = total + '€';
+            
+            const arrivoDMY = document.getElementById('data_arrivo').value;
+            const arrivoISO = dmyToISO(arrivoDMY);
+            const out = document.getElementById('data_partenza');
+            if (arrivoISO && n) { 
+                const parts = arrivoISO.split('-');
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                d.setDate(d.getDate() + n); 
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yyyy = d.getFullYear();
+                out.value = `${dd}/${mm}/${yyyy}`;
+            } else {
+                out.value = '';
+            }
+            return { total, bfCost, cityTax };
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            document.querySelectorAll('[data-i18n]').forEach(el => { 
+                if(el.tagName === 'INPUT' && el.type === 'button') el.value = t(el.dataset.i18n);
+                else el.textContent = t(el.dataset.i18n); 
+            });
+            EXTRAS.forEach(e => { const el = document.querySelector(`[data-extra-label="${e.id}"]`); if (el) el.textContent = e[lang]; });
+            document.querySelectorAll('.lang-btn').forEach(b => {
+                const isActive = b.dataset.lang === lang;
+                b.className = isActive 
+                    ? 'lang-btn px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 bg-burgundy-700 text-white shadow-sm'
+                    : 'lang-btn px-4 py-1.5 text-slate-600 font-medium rounded-xl text-xs sm:text-sm hover:text-burgundy-900 transition-all duration-200';
+            });
+            updateSummary();
+            refreshIcons();
+        }
+
+        // Firma Canvas Fluid Hi-DPI
+        const canvas = document.getElementById('sigCanvas'), ctx = canvas.getContext('2d');
+        let drawing = false, signed = false, lastCanvasWidth = 0;
+        function resizeCanvas(force = false) {
+            const r = canvas.getBoundingClientRect();
+            if (!r.width) return;
+            if (!force && Math.abs(r.width - lastCanvasWidth) < 5) return;
+            lastCanvasWidth = r.width;
+            const ratio = window.devicePixelRatio || 2;
+            const old = signed ? canvas.toDataURL() : null;
+            canvas.width = r.width * ratio; canvas.height = r.height * ratio;
+            ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+            ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#56101a'; 
+            if (old) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, r.width, r.height); img.src = old; }
+        }
+        const pos = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+        canvas.addEventListener('pointerdown', e => { drawing = true; canvas.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.moveTo(...pos(e)); });
+        canvas.addEventListener('pointermove', e => { if (!drawing) return; ctx.lineTo(...pos(e)); ctx.stroke(); signed = true; });
+        ['pointerup', 'pointercancel'].forEach(ev => canvas.addEventListener(ev, () => { drawing = false; }));
+        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); signed = false; }
+
+        function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+        
+        function showStatus(msg, ok) {
+            const el = document.getElementById('statusMsg');
+            el.textContent = msg;
+            el.className = 'mt-6 text-center font-bold p-4 rounded-2xl border ' +
+                (ok ? 'text-emerald-800 bg-emerald-50 border-emerald-200' : 'text-rose-800 bg-rose-50 border-rose-200');
+            el.classList.remove('hidden-section');
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function copiaCodice() {
+            navigator.clipboard.writeText(hostConfig.keyBoxCode).then(() => {
+                showToast(`Codice Key Box (${hostConfig.keyBoxCode}) copiato!`, 'success');
+            });
+        }
+        function copiaWifi() {
+            navigator.clipboard.writeText(hostConfig.wifiPass).then(() => {
+                showToast(`Password Wi-Fi copiata!`, 'success');
+            });
+        }
+        function copiaIndirizzo() {
+            const addr = "VICO I GAGLIARDI, 2 - 80135 NAPOLI (2° Piano)";
+            navigator.clipboard.writeText(addr).then(() => {
+                showToast("Indirizzo copiato negli appunti!", 'success');
+            });
+        }
+
+        function apriGuidaPdf() {
+            if (!hostConfig.pdfUrl) {
+                showToast("Guida PDF non ancora caricata dall'host.", 'error');
+                return;
+            }
+            if (hostConfig.pdfUrl.startsWith('data:application/pdf;base64,')) {
+                const base64Parts = hostConfig.pdfUrl.split(',');
+                const byteChars = atob(base64Parts[1]);
+                const byteNumbers = new Array(byteChars.length);
+                for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                const blobUrl = URL.createObjectURL(blob);
+                window.open(blobUrl, '_blank');
+            } else {
+                window.open(hostConfig.pdfUrl, '_blank', 'noopener');
+            }
+        }
+
+        function collectData(validate = true, btnClicked = null) {
+            const form = document.getElementById('checkinForm');
+            
+            // Attiva evidenziazione visiva degli errori
+            if (btnClicked) btnClicked.classList.add('btn-submit-attempted');
+
+            if (validate && !form.checkValidity()) { 
+                form.reportValidity(); 
+                showStatus(t('msg_fix'), false);
+                return null; 
+            }
+
+            const arrivoDMY = val('data_arrivo');
+            const arrivoISO = dmyToISO(arrivoDMY);
+            if (validate && !arrivoISO) {
+                showStatus(t('msg_checkin_date'), false);
+                return null;
+            }
+
+            const ora = val('ora_arrivo');
+            if (ora && ora < '14:30' && validate) {
+                showStatus(t('msg_time'), false);
+                return null;
+            }
+
+            const ids = [0]; for (let i = 1; i < guestIndex; i++) if (document.getElementById('nome_' + i)) ids.push(i);
+            const today = todayISO();
+            const guests = [];
+            
+            for (const i of ids) {
+                const nascitaDMY = val('data_nascita_' + i);
+                const scadenzaDMY = val('scadenza_doc_' + i);
+                const nascitaISO = dmyToISO(nascitaDMY);
+                const scadenzaISO = dmyToISO(scadenzaDMY);
+
+                if (validate && (!nascitaISO || nascitaISO > today)) { showStatus(t('msg_birth'), false); return null; }
+                if (validate && (!scadenzaISO || scadenzaISO < today)) { showStatus(t('msg_doc_exp'), false); return null; }
+
+                guests.push({
+                    nome: val('nome_' + i),
+                    cognome: val('cognome_' + i),
+                    sesso: val('sesso_' + i),
+                    data_nascita: nascitaDMY,
+                    luogo_nascita: val('luogo_nascita_' + i),
+                    nazionalita: val('nazionalita_' + i).toUpperCase(),
+                    tipo_doc: val('tipo_doc_' + i),
+                    num_doc: val('num_doc_' + i).toUpperCase(),
+                    rilasciato_da: val('rilasciato_da_' + i),
+                    scadenza_doc: scadenzaDMY
+                });
+            }
+            
+            const leadBirthISO = dmyToISO(guests[0].data_nascita);
+            const age = leadBirthISO ? (new Date() - new Date(leadBirthISO)) / 31557600000 : 0;
+            if (validate && age < 18) { showStatus(t('msg_adult'), false); return null; }
+            if (validate && !signed) { showStatus(t('msg_sig'), false); return null; }
+
+            const ex = calcExtras();
+            const summaryData = updateSummary();
+            const cityTax = summaryData.cityTax;
+
+            return {
+                cellulare: val('cellulare'), email: val('email'), lingua: currentLang,
+                ospiti: guests, num_ospiti: guests.length,
+                data_arrivo: arrivoISO, 
+                giorni_permanenza: parseInt(val('giorni_permanenza')) || 0, ora_arrivo: ora || null,
+                colazione: val('colazione'), 
+                tassa_soggiorno: `${cityTax}€ (Contanti)`, 
+                tassa_soggiorno_euro: cityTax,
+                tassa_pagata: false,
+                note: val('note') || null,
+                extras_selezionati: ex.items.join(', '), 
+                totale_extras_euro: ex.total,
+                totale_stimato_euro: summaryData.total,
+                totale_complessivo_euro: summaryData.total + cityTax,
+                firma: signed ? canvas.toDataURL('image/png') : null,
+                foto_documento_fronte: fotoFronteBase64,
+                foto_documento_retro: fotoRetroBase64
+            };
+        }
+
+        // Stampa Ricevuta PDF
+        function scaricaRicevutaPdf(dataToCheckin = null) {
+            const d = dataToCheckin || currentActiveCheckin;
+            if (!d) return;
+
+            const lead = d.ospiti && d.ospiti[0] ? d.ospiti[0] : { nome: 'Ospite', cognome: '' };
+            const nNotti = d.giorni_permanenza || 1;
+            const nOsp = d.num_ospiti || 1;
+            const taxTot = d.tassa_soggiorno_euro || (CITY_TAX_PER_PERSON_PER_NIGHT * nOsp * nNotti);
+            const oggi = isoToDMY(todayISO());
+            const numeroRicevuta = String(d.id || 1).padStart(4, '0');
+
+            const printWin = window.open('', '_blank', 'width=800,height=900');
+            printWin.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Ricevuta Imposta Soggiorno - Maison Spicchio</title>
+                <style>
+                    body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }
+                    .header { border-bottom: 2px solid #56101a; padding-bottom: 20px; margin-bottom: 25px; display: flex; justify-content: space-between; }
+                    .logo { font-size: 26px; font-weight: 800; color: #56101a; }
+                    .sub { font-size: 13px; color: #64748b; }
+                    .title { font-size: 17px; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; color: #0f172a; }
+                    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                    th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; font-size: 13px; }
+                    th { background-color: #fdf6f7; color: #56101a; font-weight: bold; }
+                    .total-box { margin-top: 25px; padding: 16px; background-color: #fefce8; border: 1px solid #fef08a; border-radius: 12px; font-size: 15px; font-weight: bold; color: #854d0e; }
+                    .footer { margin-top: 50px; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 15px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <div class="logo">Maison Spicchio</div>
+                        <div class="sub">Vico I Gagliardi, 2 - 80135 Napoli (NA)<br>Tel: +39 350 8881514 • maisonspicchio@gmail.com</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <b>RICEVUTA:</b> TS-${numeroRicevuta}<br>
+                        <b>Data emissione:</b> ${oggi}
+                    </div>
+                </div>
+
+                <div class="title">Ricevuta di Quietanza Imposta di Soggiorno</div>
+                <p>Si attesta il pagamento dell'Imposta di Soggiorno di competenza del Comune di Napoli riscossa in loco.</p>
+
+                <table>
+                    <tr><th>Ospite Intestatario</th><td>${lead.nome} ${lead.cognome}</td></tr>
+                    <tr><th>Numero Totale Ospiti</th><td>${nOsp} Persona/e</td></tr>
+                    <tr><th>Periodo</th><td>Dal ${isoToDMY(d.data_arrivo)} per ${nNotti} Notti</td></tr>
+                    <tr><th>Tariffa Comunale</th><td>6,00 € per persona a notte</td></tr>
+                </table>
+
+                <div class="total-box">
+                    IMPORTO TOTALE RISCOSSO: ${taxTot},00 € (Esente IVA ex art. 15 D.P.R. 633/72)
+                </div>
+
+                <div class="footer">
+                    Documento emesso a norma dell'art. 4 del D.Lgs. 23/2011 e regolamento attuativo del Comune di Napoli.
+                </div>
+                <script>window.onload = function(){ window.print(); }<\/script>
+            </body>
+            </html>`);
+            printWin.document.close();
+        }
+
+        function esportaSchedinaPolizia(checkinId) {
+            const d = globalCheckins.find(x => x.id === checkinId);
+            if (!d || !d.ospiti || !d.ospiti.length) {
+                showToast("Dati ospite non disponibili per l'export.", 'error');
+                return;
+            }
+
+            const pad = (str, len) => (str || '').toString().padEnd(len, ' ').slice(0, len);
+            const arrivoStr = (d.data_arrivo || '').replace(/-/g, '').slice(0, 8);
+            const permanenzaStr = String(d.giorni_permanenza || 1).padStart(2, '0');
+
+            let txtContent = '';
+
+            d.ospiti.forEach((g, idx) => {
+                const tipoAlloggiato = (idx === 0) ? (d.ospiti.length === 1 ? '16' : '17') : '19';
+                const sesso = g.sesso === 'M' ? '1' : '2';
+                
+                let nascitaStr = '';
+                const partsN = (g.data_nascita || '').split('/');
+                if (partsN.length === 3) nascitaStr = `${partsN[2]}${partsN[1]}${partsN[0]}`;
+
+                let riga = '';
+                riga += pad(tipoAlloggiato, 2);
+                riga += pad(arrivoStr, 8);
+                riga += pad(permanenzaStr, 2);
+                riga += pad(g.cognome.toUpperCase(), 50);
+                riga += pad(g.nome.toUpperCase(), 30);
+                riga += pad(sesso, 1);
+                riga += pad(nascitaStr, 8);
+                riga += pad(g.luogo_nascita.toUpperCase(), 9);
+                riga += pad(g.nazionalita.toUpperCase(), 9);
+
+                if (idx === 0) {
+                    const tipoDocPolizia = g.tipo_doc === 'PASSP' ? 'PASSP' : (g.tipo_doc === 'PATEN' ? 'PATEN' : 'IDENT');
+                    riga += pad(tipoDocPolizia, 5);
+                    riga += pad(g.num_doc.toUpperCase(), 20);
+                    riga += pad(g.rilasciato_da.toUpperCase(), 9);
+                }
+
+                txtContent += riga.trimEnd() + '\r\n';
+            });
+
+            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `AlloggiatiWeb_${d.ospiti[0].cognome}_${arrivoStr}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("File Alloggiati Web generato con successo!", 'success');
+        }
+        
+        // ================= IMPORT / EXPORT BACKUP CSV =================
+        function esportaBackupCSV() {
+            if (!globalCheckins || globalCheckins.length === 0) {
+                showToast("Nessun dato presente nel database da esportare.", "error");
+                return;
+            }
+            
+            const cleanStr = (str) => (str || '').toString().replace(/\n/g, ' ').replace(/;/g, ',');
+            
+            let csvContent = "\uFEFF"; 
+            csvContent += "ID_Checkin;Data_Arrivo;Notti;Ospite_Principale;Cellulare;Email;Ospiti_Totali;Extra_Acquistati;Totale_Euro;Stato_Tassa;Payload_Ripristino\r\n";
+            
+            globalCheckins.forEach(r => {
+                const ospite = r.ospiti && r.ospiti[0] ? `${r.ospiti[0].nome} ${r.ospiti[0].cognome}` : 'Sconosciuto';
+                const dataArrivo = isoToDMY(r.data_arrivo);
+                const statoTassa = r.tassa_pagata ? "Saldato" : "In Attesa";
+                const totale = r.totale_complessivo_euro || 0;
+                
+                // Pacchetto di ripristino sicuro (crittografato) per non rompere la formattazione CSV
+                const rawData = btoa(unescape(encodeURIComponent(JSON.stringify(r))));
+                
+                let row = [
+                    r.id, 
+                    dataArrivo, 
+                    r.giorni_permanenza, 
+                    `"${cleanStr(ospite)}"`, 
+                    `"${cleanStr(r.cellulare)}"`,
+                    `"${cleanStr(r.email)}"`, 
+                    r.num_ospiti, 
+                    `"${cleanStr(r.extras_selezionati)}"`, 
+                    totale, 
+                    `"${statoTassa}"`,
+                    `"${rawData}"`
+                ];
+                csvContent += row.join(";") + "\r\n";
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            const dataOggi = new Date().toISOString().split('T')[0];
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Backup_MaisonSpicchio_${dataOggi}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Backup generato e scaricato!", "success");
+        }
+
+        async function importaBackupCSV(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const content = e.target.result;
+                const lines = content.split('\n');
+                let toRestore = [];
+                
+                for(let i=1; i<lines.length; i++) {
+                    const line = lines[i].trim();
+                    if(!line) continue;
+                    
+                    const parts = line.split(';');
+                    if(parts.length < 11) continue; // Salta righe malformate o incomplete
+                    
+                    const rawBase64 = parts[parts.length - 1].replace(/^"|"$/g, '');
+                    
+                    if(rawBase64 && rawBase64.length > 10) {
+                        try {
+                            const jsonObj = JSON.parse(decodeURIComponent(escape(atob(rawBase64))));
+                            toRestore.push(jsonObj);
+                        } catch(err) {
+                            console.error("Errore decodifica riga", i, err);
+                        }
+                    }
+                }
+                
+                if(toRestore.length === 0) {
+                    showToast("Il file non contiene dati validi per il ripristino.", "error");
+                    event.target.value = '';
+                    return;
+                }
+                
+                try {
+                    showToast(`Tentativo di ripristino di ${toRestore.length} check-in...`, "info");
+                    
+                    if(db) {
+                        const { error } = await db.from('checkins').upsert(toRestore);
+                        if(error) throw error;
+                    }
+                    
+                    showToast(`Ripristinati ${toRestore.length} check-in con successo!`, "success");
+                    fetchCheckins(); 
+                } catch(error) {
+                    showToast("Errore durante il ripristino: " + error.message, "error");
+                }
+                
+                event.target.value = ''; 
+            };
+            reader.readAsText(file);
+        }
+
+        async function toggleConvalidaTassa(id, statoAttuale) {
+            const nuovoStato = !statoAttuale;
+            try {
+                if (db) {
+                    await db.from('checkins').update({ tassa_pagata: nuovoStato }).eq('id', id);
+                }
+                const ch = globalCheckins.find(x => x.id === id);
+                if (ch) ch.tassa_pagata = nuovoStato;
+                fetchCheckins();
+                showToast("Stato pagamento aggiornato!", 'success');
+            } catch (e) {
+                showToast("Errore aggiornamento: " + e.message, 'error');
+            }
+        }
+
+        function buildHTMLSummary(d) {
+            const arrivoFormatted = isoToDMY(d.data_arrivo);
+            let html = `<div class="space-y-6 text-sm text-slate-800">`;
+            html += `<section><h3 class="text-base font-bold text-burgundy-900 border-b border-slate-200 pb-2 mb-3">Dettagli del Soggiorno</h3>
+            <div class="grid grid-cols-2 gap-3">
+                <p><span class="text-slate-400 uppercase text-[11px] font-bold">Arrivo</span><br><b class="text-slate-900 font-mono">${arrivoFormatted} ${d.ora_arrivo ? d.ora_arrivo : ''}</b></p>
+                <p><span class="text-slate-400 uppercase text-[11px] font-bold">Permanenza</span><br><b class="text-slate-900">${d.giorni_permanenza} Notti</b></p>
+                <p><span class="text-slate-400 uppercase text-[11px] font-bold">Telefono</span><br><b>${d.cellulare}</b></p>
+                <p><span class="text-slate-400 uppercase text-[11px] font-bold">Email</span><br><b>${d.email}</b></p>
+                <p><span class="text-slate-400 uppercase text-[11px] font-bold">Colazione</span><br><b>${d.colazione}</b></p>
+                <p><span class="text-slate-400 uppercase text-[11px] font-bold">Tassa di Soggiorno</span><br><b class="text-amber-800 font-mono">${d.tassa_soggiorno || d.tassa_soggiorno_euro + '€'}</b></p>
+                ${d.note ? `<div class="col-span-2"><span class="text-slate-400 uppercase text-[11px] font-bold">Note speciali</span><br><b>${d.note}</b></div>` : ''}
+            </div></section>`;
+
+            html += `<section><h3 class="text-base font-bold text-burgundy-900 border-b border-slate-200 pb-2 mb-3">Servizi Extra & Importi</h3>
+            <p><span class="text-slate-400 uppercase text-[11px] font-bold">Richieste Selezionate</span><br><b>${d.extras_selezionati || 'Nessun extra selezionato'}</b></p>
+            <p class="text-lg mt-2"><span class="text-slate-400 uppercase text-[11px] font-bold block">Totale Servizi</span><b class="text-burgundy-900 text-2xl font-mono">${d.totale_stimato_euro}€</b></p>
+            </section>`;
+
+            html += `<section><h3 class="text-base font-bold text-burgundy-900 border-b border-slate-200 pb-2 mb-3">Ospiti Registrati (${d.num_ospiti})</h3>`;
+            d.ospiti.forEach((g, i) => {
+                html += `<div class="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl mb-3 shadow-sm">
+                    <p class="font-bold text-sm mb-1 text-slate-900">${i+1}. ${g.nome} ${g.cognome} <span class="text-slate-400 font-normal">(${g.sesso})</span></p>
+                    <p class="text-xs text-slate-600 mb-1">Nascita: <b>${g.luogo_nascita}</b> il <b>${g.data_nascita}</b> (${g.nazionalita})</p>
+                    <p class="text-xs text-slate-600">Doc: <b>${g.tipo_doc}</b> n. <b class="font-mono">${g.num_doc}</b> <span class="text-slate-400">(Scadenza: ${g.scadenza_doc})</span></p>
+                </div>`;
+            });
+            html += `</section>`;
+
+            if (d.foto_documento_fronte || d.foto_documento_retro || d.firma) {
+                html += `<section class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">`;
+                if (d.foto_documento_fronte) {
+                    html += `<div><h4 class="text-xs font-bold text-slate-700 mb-1.5 uppercase">Doc. Fronte</h4>
+                    <img src="${d.foto_documento_fronte}" class="w-full h-32 rounded-xl border border-slate-200 shadow-sm object-cover"></div>`;
+                }
+                if (d.foto_documento_retro) {
+                    html += `<div><h4 class="text-xs font-bold text-slate-700 mb-1.5 uppercase">Doc. Retro</h4>
+                    <img src="${d.foto_documento_retro}" class="w-full h-32 rounded-xl border border-slate-200 shadow-sm object-cover"></div>`;
+                }
+                if (d.firma) {
+                    html += `<div><h4 class="text-xs font-bold text-slate-700 mb-1.5 uppercase">Firma</h4>
+                    <img src="${d.firma}" class="w-full h-32 bg-slate-50 rounded-xl border border-slate-200 shadow-sm object-contain p-2"></div>`;
+                }
+                html += `</section>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        function showSummary() {
+            const data = collectData(true); 
+            if (!data) return; 
+            document.getElementById('modalTitle').textContent = t('summary');
+            document.getElementById('modalBody').innerHTML = buildHTMLSummary(data);
+            document.getElementById('summaryModal').classList.remove('hidden-section');
+            document.body.style.overflow = 'hidden'; 
+        }
+
+        function closeModal() {
+            document.getElementById('summaryModal').classList.add('hidden-section');
+            document.body.style.overflow = 'auto';
+        }
+
+        function printModal() {
+            const content = document.getElementById('modalBody').innerHTML;
+            const printWindow = window.open('', '', 'width=800,height=900');
+            printWindow.document.write(`<html><head><title>Maison Spicchio - Schedina</title><script src="https://cdn.tailwindcss.com"><\/script></head><body class="p-8">` + content + `</body></html>`);
+            printWindow.document.close();
+            setTimeout(() => { printWindow.print(); printWindow.close(); }, 800);
+        }
+
+        function buildText(d) {
+            const arrivoFormatted = isoToDMY(d.data_arrivo);
+            let s = `*✨ Nuovo Self Check-in Maison Spicchio*\n\n`;
+            s += `*Arrivo:* ${arrivoFormatted}${d.ora_arrivo ? ' ore ' + d.ora_arrivo : ''}\n`;
+            s += `*Permanenza:* ${d.giorni_permanenza} notti\n`;
+            s += `*Ospiti Totali:* ${d.num_ospiti}\n`;
+            s += `*Cellulare:* ${d.cellulare}\n`;
+            s += `*Email:* ${d.email}\n\n`;
+            
+            s += `*🍽️ Colazione:* ${d.colazione}\n`;
+            s += `*💰 Tassa di Soggiorno:* ${d.tassa_soggiorno_euro}€\n`;
+            if (d.note) s += `*📝 Note:* ${d.note}\n`;
+            if (d.extras_selezionati) s += `*✨ Extra:* ${d.extras_selezionati}\n`;
+            s += `*💶 Totale Servizi Extra:* ${d.totale_stimato_euro}€\n`;
+            s += `*💳 Totale Complessivo (con tassa):* ${d.totale_complessivo_euro}€\n\n`;
+            
+            d.ospiti.forEach((g, i) => {
+                s += `*👤 Ospite ${i + 1}:* ${g.nome} ${g.cognome} (${g.sesso})\n`;
+                s += `   Nato/a a: ${g.luogo_nascita} il ${g.data_nascita} (${g.nazionalita})\n`;
+                s += `   Doc: ${g.tipo_doc} n. ${g.num_doc}\n`;
+                s += `   Rilasciato da: ${g.rilasciato_da} - Scad: ${g.scadenza_doc}\n`;
+            });
+            
+            s += `\n*🔒 Privacy e GDPR accettati.*\n*🔒 Divieto di ingresso a terzi confermato.*`;
+            return s;
+        }
+
+        async function submitData(method) {
+            const btnId = method === 'whatsapp' ? 'btnWa' : 'btnEmail';
+            const btn = document.getElementById(btnId);
+            
+            const data = collectData(true, btn);
+            if (!data) return;
+
+            btn.classList.add('btn-busy');
+            document.querySelectorAll('button').forEach(b => b.disabled = true);
+            showStatus(t('sending'), true);
+
+            try {
+                if (db) {
+                    const { data: insertedData, error } = await db.from('checkins').insert([data]).select();
+                    if (error) throw error;
+                    if (insertedData && insertedData[0]) data.id = insertedData[0].id;
+                }
+                
+                // DISATTIVAZIONE CODICE USA E GETTA (se usato)
+                if (guestSessionCode && db) {
+                    try {
+                        const { data: currentSettings } = await db.from('host_settings').select('access_codes').eq('id', 'config_spicchio').single();
+                        if (currentSettings && currentSettings.access_codes) {
+                            let freshCodes = currentSettings.access_codes.split(',').filter(c => c.trim() !== '');
+                            freshCodes = freshCodes.filter(c => c !== guestSessionCode);
+                            await db.from('host_settings').update({ access_codes: freshCodes.join(',') }).eq('id', 'config_spicchio');
+                        }
+                    } catch(e) { console.error("Errore disattivazione codice", e); }
+                }
+
+                currentActiveCheckin = data;
+                const text = buildText(data);
+                if (method === 'whatsapp') {
+                    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+                } else {
+                    location.href = `mailto:${HOST_EMAIL}?subject=${encodeURIComponent('Nuovo Check-in - ' + data.ospiti[0].cognome)}&body=${encodeURIComponent(text.replace(/\*/g, ''))}`;
+                }
+
+                setTimeout(() => {
+                    document.getElementById('checkinForm').classList.add('hidden-section');
+                    document.getElementById('adminReturnBanner').classList.add('hidden-section');
+                    document.getElementById('bottomSummaryBar').classList.add('hidden-section');
+                    document.getElementById('successScreen').classList.remove('hidden-section');
+                    
+                    const btnReceipt = document.getElementById('btnScaricaRicevuta');
+                    const badgeReceipt = document.getElementById('receiptBadge');
+                    btnReceipt.classList.add('hidden-section');
+                    badgeReceipt.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs bg-white text-slate-600 border border-slate-200 shadow-sm";
+                    badgeReceipt.innerHTML = '<i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i> Ricevuta in attesa di convalida host';
+
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    refreshIcons();
+                }, 800);
+
+            } catch (err) {
+                showStatus(t('msg_err') + (err.message || err), false);
+            } finally {
+                if (btn) btn.classList.remove('btn-busy');
+                document.querySelectorAll('button').forEach(b => b.disabled = false);
+            }
+        }
+
+        function newCheckin() {
+            window.location.href = window.location.pathname;
+        }
+
+        // ================= GESTIONE AREA ADMIN =================
+        function openAdminModal() {
+            if (isAdminSession) {
+                openAdmin();
+                return;
+            }
+            const passInput = document.getElementById('adminPassInput');
+            passInput.value = '';
+            passInput.type = 'password';
+            document.getElementById('adminLoginErr').classList.add('hidden-section');
+            document.getElementById('adminLoginModal').classList.remove('hidden-section');
+            setTimeout(() => passInput.focus(), 100);
+            refreshIcons();
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminLoginModal').classList.add('hidden-section');
+        }
+
+        function toggleAdminPassword() {
+            const input = document.getElementById('adminPassInput');
+            const icon = document.getElementById('eyeIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            refreshIcons();
+        }
+
+        function verifyAdminPassword() {
+            const valPass = document.getElementById('adminPassInput').value.trim();
+            if (btoa(valPass) === CODICE_SEGRETO_ADMIN_ENCODED) {
+                closeAdminModal();
+                openAdmin();
+            } else {
+                document.getElementById('adminLoginErr').classList.remove('hidden-section');
+            }
+        }
+
+        async function openAdmin() {
+            isAdminSession = true;
+            document.getElementById('guestLoginScreen').classList.add('hidden-section');
+            document.getElementById('checkinForm').classList.add('hidden-section');
+            document.getElementById('bottomSummaryBar').classList.add('hidden-section');
+            document.getElementById('topNavBar').classList.add('hidden-section');
+            document.getElementById('successScreen').classList.add('hidden-section');
+            document.getElementById('adminArea').classList.remove('hidden-section');
+            
+            await caricaImpostazioniHost();
+            document.getElementById('adminKeyBox').value = hostConfig.keyBoxCode;
+            document.getElementById('adminWifiSsid').value = hostConfig.wifiSsid;
+            document.getElementById('adminWifiPass').value = hostConfig.wifiPass;
+            document.getElementById('adminPdfUrl').value = hostConfig.pdfUrl.startsWith('data:') ? '' : hostConfig.pdfUrl;
+            document.getElementById('adminTickerInput').value = hostConfig.tickerText;
+            document.getElementById('pdfAdminStatus').classList.toggle('hidden-section', !hostConfig.pdfUrl);
+
+            fetchCheckins();
+            refreshIcons();
+        }
+
+        function closeAdmin() {
+            // Ricarica la pagina senza parametri per tornare in modalità ospite sicura
+            window.location.href = window.location.pathname;
+        }
+        
+        function generaCodiceAccesso() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = 'MS-';
+            for(let i=0; i<5; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+            validAccessCodes.push(code);
+            hostConfig.accessCodes = validAccessCodes.join(',');
+            renderAccessCodesAdmin();
+            salvaImpostazioniHost(false);
+        }
+
+        function rimuoviCodiceAccesso(code) {
+            validAccessCodes = validAccessCodes.filter(c => c !== code);
+            hostConfig.accessCodes = validAccessCodes.join(',');
+            renderAccessCodesAdmin();
+            salvaImpostazioniHost(false);
+        }
+
+        function copiaCodiceAccesso(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                showToast(`Codice ${code} copiato!`, 'success');
+            });
+        }
+        
+        function renderAccessCodesAdmin() {
+            const container = document.getElementById('adminAccessCodesList');
+            if(!container) return;
+            if(validAccessCodes.length === 0) {
+                container.innerHTML = '<span class="text-xs text-slate-400 italic">Nessun codice attivo. Generane uno nuovo.</span>';
+                return;
+            }
+            container.innerHTML = validAccessCodes.map(code => `
+                <div class="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-indigo-900 shadow-sm">
+                    ${code}
+                    <button type="button" onclick="copiaCodiceAccesso('${code}')" class="text-indigo-400 hover:text-indigo-700 transition" title="Copia"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                    <button type="button" onclick="rimuoviCodiceAccesso('${code}')" class="text-slate-400 hover:text-rose-600 transition" title="Elimina"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                </div>
+            `).join('');
+            refreshIcons();
+        }
+
+        function previewSuccessFromAdmin(ospiteId = null) {
+            document.getElementById('adminArea').classList.add('hidden-section');
+            document.getElementById('adminReturnBanner').classList.remove('hidden-section');
+            document.getElementById('successScreen').classList.remove('hidden-section');
+
+            const titleEl = document.getElementById('successTitle');
+            const subEl = document.getElementById('successSubtext');
+            const btnReceipt = document.getElementById('btnScaricaRicevuta');
+            const badgeReceipt = document.getElementById('receiptBadge');
+
+            if (ospiteId) {
+                const d = globalCheckins.find(x => x.id === ospiteId);
+                if (d && d.ospiti && d.ospiti[0]) {
+                    currentActiveCheckin = d;
+                    titleEl.textContent = `Check-in di ${d.ospiti[0].nome} ${d.ospiti[0].cognome}`;
+                    subEl.textContent = `Arrivo: ${isoToDMY(d.data_arrivo)} (${d.giorni_permanenza} notti) • Tel: ${d.cellulare}`;
+                    document.getElementById('displayTaxDue').textContent = (d.tassa_soggiorno_euro || (CITY_TAX_PER_PERSON_PER_NIGHT * (d.num_ospiti || 1) * (d.giorni_permanenza || 1))) + '€';
+                    
+                    if (d.tassa_pagata) {
+                        btnReceipt.classList.remove('hidden-section');
+                        badgeReceipt.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs bg-emerald-100 text-emerald-800";
+                        badgeReceipt.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> Pagamento Convalidato';
+                    } else {
+                        btnReceipt.classList.add('hidden-section');
+                        badgeReceipt.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs bg-amber-100 text-amber-800";
+                        badgeReceipt.innerHTML = '<i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i> Ricevuta non abilitata (In attesa)';
+                    }
+                }
+            } else {
+                titleEl.textContent = t('done_title');
+                subEl.textContent = t('done_text');
+                btnReceipt.classList.remove('hidden-section');
+                badgeReceipt.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs bg-emerald-100 text-emerald-800";
+                badgeReceipt.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> Ricevuta Pronta (Anteprima)';
+                updateSummary();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            refreshIcons();
+        }
+
+        function returnToAdminFromSuccess() {
+            document.getElementById('successScreen').classList.add('hidden-section');
+            document.getElementById('adminReturnBanner').classList.add('hidden-section');
+            document.getElementById('adminArea').classList.remove('hidden-section');
+            refreshIcons();
+        }
+
+        function rimuoviPdfAdmin() {
+            hostConfig.pdfUrl = '';
+            document.getElementById('adminPdfFile').value = '';
+            document.getElementById('adminPdfUrl').value = '';
+            document.getElementById('pdfAdminStatus').classList.add('hidden-section');
+            showToast("PDF rimosso. Clicca Salva per confermare.", "info");
+        }
+
+        async function caricaImpostazioniHost() {
+            const localSaved = localStorage.getItem('maison_host_config');
+            if (localSaved) {
+                try { hostConfig = { ...hostConfig, ...JSON.parse(localSaved) }; } catch(e){}
+            }
+            if (db) {
+                try {
+                    const { data } = await db.from('host_settings').select('*').eq('id', 'config_spicchio').single();
+                    if (data) {
+                        hostConfig.keyBoxCode = data.key_box_code || hostConfig.keyBoxCode;
+                        hostConfig.wifiSsid = data.wifi_ssid || hostConfig.wifiSsid;
+                        hostConfig.wifiPass = data.wifi_password || hostConfig.wifiPass;
+                        hostConfig.pdfUrl = data.pdf_url || hostConfig.pdfUrl;
+                        hostConfig.tickerText = data.ticker_text || hostConfig.tickerText;
+                        hostConfig.accessCodes = data.access_codes || '';
+                        validAccessCodes = hostConfig.accessCodes.split(',').filter(c => c.trim() !== '');
+                    }
+                } catch (e) {}
+            }
+            applicaImpostazioniGrafica();
+            if(isAdminSession) renderAccessCodesAdmin();
+        }
+
+        function applicaImpostazioniGrafica() {
+            document.getElementById('displayKeyBox').textContent = hostConfig.keyBoxCode;
+            document.getElementById('displayWifiSsid').textContent = hostConfig.wifiSsid;
+            document.getElementById('displayWifiPass').textContent = hostConfig.wifiPass;
+            document.getElementById('liveTickerText').textContent = hostConfig.tickerText;
+        }
+
+        async function salvaImpostazioniHost(showMsg = true) {
+            hostConfig.keyBoxCode = document.getElementById('adminKeyBox').value.trim() || '081';
+            hostConfig.wifiSsid = document.getElementById('adminWifiSsid').value.trim() || 'Maison Spicchio Guest';
+            hostConfig.wifiPass = document.getElementById('adminWifiPass').value.trim() || 'napoli2026';
+            const urlInput = document.getElementById('adminPdfUrl').value.trim();
+            if (urlInput) hostConfig.pdfUrl = urlInput;
+            hostConfig.tickerText = document.getElementById('adminTickerInput').value.trim() || hostConfig.tickerText;
+
+            const pdfFile = document.getElementById('adminPdfFile').files[0];
+            if (pdfFile) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    hostConfig.pdfUrl = e.target.result;
+                    await finalizzaSalvataggioHost(showMsg);
+                };
+                reader.readAsDataURL(pdfFile);
+                return;
+            }
+            await finalizzaSalvataggioHost(showMsg);
+        }
+
+        async function finalizzaSalvataggioHost(showMsg = true) {
+            localStorage.setItem('maison_host_config', JSON.stringify(hostConfig));
+            if (db) {
+                try {
+                    const { error } = await db.from('host_settings').upsert({
+                        id: 'config_spicchio',
+                        key_box_code: hostConfig.keyBoxCode,
+                        wifi_ssid: hostConfig.wifiSsid,
+                        wifi_password: hostConfig.wifiPass,
+                        pdf_url: hostConfig.pdfUrl,
+                        ticker_text: hostConfig.tickerText,
+                        access_codes: hostConfig.accessCodes || '',
+                        updated_at: new Date().toISOString()
+                    });
+                    if(error) throw error;
+                } catch(e) { 
+                    if(showMsg) {
+                        if (e.message && e.message.includes('access_codes')) {
+                            alert("ERRORE: Devi andare su Supabase e aggiungere la colonna 'access_codes' (tipo text) nella tabella 'host_settings'!");
+                        } else {
+                            showToast("Errore DB: " + e.message, "error"); 
+                        }
+                    }
+                    return; 
+                }
+            }
+            document.getElementById('pdfAdminStatus').classList.toggle('hidden-section', !hostConfig.pdfUrl);
+            applicaImpostazioniGrafica();
+            if(showMsg) showToast("Impostazioni host salvate con successo!", "success");
+        }
+
+        async function fetchCheckins() {
+            if(!db) return;
+            const tbody = document.getElementById('adminTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">Aggiornamento registro...</td></tr>';
+            try {
+                const { data, error } = await db.from('checkins').select('*').order('data_arrivo', { ascending: false });
+                if(error) throw error;
+                if(!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-slate-400">Nessun check-in presente nel database.</td></tr>';
+                    return;
+                }
+                globalCheckins = data;
+                tbody.innerHTML = data.map(r => {
+                    const ospite = r.ospiti && r.ospiti[0] ? `${r.ospiti[0].nome} ${r.ospiti[0].cognome}` : 'Sconosciuto';
+                    const cityTaxDisplay = r.tassa_soggiorno_euro ? `${r.tassa_soggiorno_euro}€` : `${CITY_TAX_PER_PERSON_PER_NIGHT * (r.num_ospiti || 1) * (r.giorni_permanenza || 1)}€`;
+                    const isPagata = !!r.tassa_pagata;
+                    return `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50/70 text-xs transition">
+                        <td class="p-3.5 whitespace-nowrap font-mono font-medium text-slate-700">${isoToDMY(r.data_arrivo)}</td>
+                        <td class="p-3.5 font-bold text-slate-900">${ospite}</td>
+                        <td class="p-3.5 font-bold text-amber-900 font-mono">${cityTaxDisplay}</td>
+                        <td class="p-3.5">
+                            <button type="button" onclick="toggleConvalidaTassa(${r.id}, ${isPagata})" class="px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 ${isPagata ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'}">
+                                ${isPagata ? '<i data-lucide="check" class="w-3.5 h-3.5"></i> Saldata' : '<i data-lucide="clock" class="w-3.5 h-3.5"></i> In Attesa'}
+                            </button>
+                        </td>
+                        <td class="p-3.5 text-center whitespace-nowrap space-x-1.5">
+                            <button type="button" onclick="inviaConfermaWA(${r.id})" class="bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#1da851] px-2.5 py-1.5 rounded-xl text-xs font-bold transition inline-flex items-center gap-1" title="Invia conferma su WhatsApp">
+                                <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Conferma
+                            </button>
+                            <button type="button" onclick="esportaSchedinaPolizia(${r.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-bold transition inline-flex items-center gap-1" title="Scarica file txt per Alloggiati Web"><i data-lucide="shield" class="w-3.5 h-3.5"></i> Polizia</button>
+                            <button type="button" onclick="scaricaRicevutaPdf(globalCheckins.find(x => x.id === ${r.id}))" class="bg-amber-50 hover:bg-amber-100 text-amber-800 px-2.5 py-1.5 rounded-xl text-xs font-bold transition inline-flex items-center gap-1"><i data-lucide="receipt" class="w-3.5 h-3.5"></i> Ricevuta</button>
+                            <button type="button" onclick="previewSuccessFromAdmin(${r.id})" class="bg-gold-50 hover:bg-gold-100 text-burgundy-900 px-2.5 py-1.5 rounded-xl text-xs font-bold transition inline-flex items-center gap-1"><i data-lucide="eye" class="w-3.5 h-3.5"></i> Pagina</button>
+                            <button type="button" onclick="viewCheckinModal(${r.id})" class="bg-burgundy-50 hover:bg-burgundy-100 text-burgundy-800 px-2.5 py-1.5 rounded-xl text-xs font-bold transition inline-flex items-center gap-1"><i data-lucide="file-text" class="w-3.5 h-3.5"></i> Scheda</button>
+                            <button type="button" onclick="confirmDeleteCheckin(${r.id})" class="text-rose-600 hover:bg-rose-50 p-1.5 rounded-xl transition inline-flex items-center"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>`;
+                }).join('');
+                refreshIcons();
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-rose-600 font-medium">Errore di connessione: ${err.message}</td></tr>`;
+            }
+        }
+
+        let checkinToDelete = null;
+
+        function confirmDeleteCheckin(id) {
+            checkinToDelete = id;
+            document.getElementById('deleteConfirmModal').classList.remove('hidden-section');
+            refreshIcons();
+        }
+
+        function closeDeleteModal() {
+            checkinToDelete = null;
+            document.getElementById('deleteConfirmModal').classList.add('hidden-section');
+        }
+
+        async function executeDeleteCheckin() {
+            if(!checkinToDelete) return;
+            const id = checkinToDelete;
+            closeDeleteModal();
+            
+            try {
+                const { error } = await db.from('checkins').delete().eq('id', id);
+                if(error) throw error;
+                fetchCheckins();
+                showToast("Check-in eliminato con successo", "success");
+            } catch (err) { 
+                showToast("Impossibile eliminare: " + err.message, "error"); 
+            }
+        }
+
+        function inviaConfermaWA(id) {
+            const d = globalCheckins.find(x => x.id === id);
+            if (!d || !d.cellulare) {
+                showToast("Numero di cellulare non disponibile.", "error");
+                return;
+            }
+            
+            let phone = d.cellulare.replace(/[\s\-+]/g, '');
+            if (phone.startsWith('3') && phone.length <= 10) {
+                phone = '39' + phone;
+            }
+            
+            const ospiteNome = d.ospiti && d.ospiti[0] ? d.ospiti[0].nome : 'Ospite';
+            
+            let msg = `Ciao ${ospiteNome}, ti confermiamo che il tuo check-in per Maison Spicchio è stato completato con successo! 🎉\n\n`;
+            msg += `Ecco le tue credenziali di accesso:\n`;
+            msg += `🔑 Codice Keybox: *${hostConfig.keyBoxCode}*\n`;
+            msg += `🛜 Rete Wi-Fi: *${hostConfig.wifiSsid}*\n`;
+            msg += `🔒 Password Wi-Fi: *${hostConfig.wifiPass}*\n\n`;
+            msg += `Ti auguriamo un piacevole soggiorno a Napoli! Per qualsiasi necessità siamo a disposizione.`;
+            
+            const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+            window.open(waUrl, '_blank', 'noopener');
+        }
+
+        // ================= SETUP INIZIALE =================
+        window.addEventListener('DOMContentLoaded', async () => {
+            setLanguage(currentLang);
+            await caricaImpostazioniHost();
+
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('admin') === atob(CODICE_SEGRETO_ADMIN_ENCODED)) {
+                openAdmin();
+            } else {
+                // Modalità Ospite Sicura (Nasconde il form, mostra login)
+                document.getElementById('checkinForm').classList.add('hidden-section');
+                document.getElementById('bottomSummaryBar').classList.add('hidden-section');
+                document.getElementById('guestLoginScreen').classList.remove('hidden-section');
+            }
+            
+            window.addEventListener('resize', () => resizeCanvas(false));
+            refreshIcons();
+        });
+    </script>
+</body>
+</html>
